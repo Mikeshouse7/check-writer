@@ -1,0 +1,7 @@
+# private, never on GitHub: bank numbers live in data/ and backups
+.env
+data/
+*.json.bak
+*backup*.json
+my-accounts-restore.json
+node_modules/

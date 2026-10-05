@@ -1,0 +1,1163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Check Writer</title>
+<meta name="description" content="Write and print checks on Value Chex / VersaCheck Form #1000 blank check stock (check on top, two stubs).">
+<style>
+/* Layout: form column on the left, true-to-scale sheet preview on the right; stacks on phones. */
+:root {
+  --bg: #eef1ee;
+  --panel: #ffffff;
+  --ink: #1d2a24;
+  --muted: #5d6b63;
+  --line: #cfd8d2;
+  --accent: #2f6b4f;
+  --accent-ink: #ffffff;
+  --warn: #9a5b00;
+  --bad: #a3322a;
+  --good: #2f6b4f;
+  --paper: #ffffff;
+  --paper-ink: #000000;
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-num: ui-monospace, "SF Mono", Consolas, "Liberation Mono", monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #141a17; --panel: #1d2521; --ink: #e3ebe6; --muted: #9aaba1; --line: #33413a;
+  --accent: #6fbf95; --accent-ink: #0e1a14; --warn: #e2a74a; --bad: #ef8a80; --good: #6fbf95; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #141a17; --panel: #1d2521; --ink: #e3ebe6; --muted: #9aaba1; --line: #33413a;
+  --accent: #6fbf95; --accent-ink: #0e1a14; --warn: #e2a74a; --bad: #ef8a80; --good: #6fbf95; color-scheme: dark }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 14px; margin: 0; }
+.app { max-width: 1400px; margin: 0 auto; padding-inline: 16px; padding-block: 16px 40px; }
+header.top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; margin-bottom: 14px; }
+header.top h1 { font-size: 20px; margin: 0; letter-spacing: .01em; }
+header.top .sub { color: var(--muted); font-size: 13px; }
+nav.tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.acctPick { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); min-width: 0; }
+.acctPick select { font: inherit; font-size: 14px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; max-width: 260px; min-width: 0; }
+.nudgeWrap { display: flex; flex-wrap: wrap; gap: 16px; }
+.nudge { display: grid; gap: 6px; justify-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 8px; min-width: 170px; }
+.nudgeTitle { font-size: 12px; font-weight: 600; color: var(--muted); }
+.pad { display: grid; grid-template-columns: repeat(3, 44px); grid-auto-rows: 40px; gap: 4px; }
+.pad .arrow { padding: 0; font-size: 18px; }
+.pad .reset { font-size: 11px; }
+.readout { font-size: 12px; color: var(--muted); text-align: center; }
+details.hint summary { cursor: pointer; }
+button.b:disabled { opacity: .45; cursor: not-allowed; }
+@media (max-width: 700px) { .acctPick { margin-left: 0; width: 100%; } .acctPick select { flex: 1; max-width: none; } }
+nav.tabs button { border: 1px solid var(--line); background: var(--panel); color: var(--ink); padding: 7px 14px; border-radius: 6px; cursor: pointer; font: inherit; }
+nav.tabs button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.grid { display: grid; grid-template-columns: minmax(300px, 420px) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; min-width: 0; }
+.panel h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
+.panel h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 18px 0 8px; font-weight: 600; }
+.fields { display: grid; gap: 10px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+label.f { display: grid; gap: 4px; font-size: 12px; color: var(--muted); min-width: 0; }
+label.f input, label.f textarea, label.f select { font: inherit; font-size: 14px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; padding: 7px 8px; width: 100%; min-width: 0; }
+label.f textarea { resize: vertical; min-height: 60px; }
+input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+label.chk { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+.words { font-size: 13px; padding: 8px 10px; border-radius: 5px; background: var(--bg); border: 1px dashed var(--line); min-height: 34px; }
+.hint { font-size: 12px; color: var(--muted); line-height: 1.45; }
+.msg { font-size: 12px; min-height: 16px; }
+.msg.bad { color: var(--bad); } .msg.good { color: var(--good); } .msg.warn { color: var(--warn); }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+button.b { font: inherit; padding: 8px 14px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
+button.b.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+button.b.danger { color: var(--bad); }
+button.b:hover { filter: brightness(1.05); }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.previewWrap { overflow: hidden; border-radius: 4px; }
+.previewBar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: center; margin-bottom: 10px; }
+.previewBar .hint { margin: 0; }
+.scaleBox { position: relative; width: 100%; }
+.scaleBox .sheet { position: absolute; top: 0; left: 0; transform-origin: 0 0; box-shadow: 0 1px 6px rgba(0,0,0,.25); }
+table.reg { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.reg th, table.reg td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.reg td.wrap { white-space: normal; min-width: 140px; }
+table.reg th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+table.reg td.amt, table.reg th.amt { text-align: right; }
+.tableScroll { overflow-x: auto; }
+.pill { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; }
+.pill.printed { color: var(--good); } .pill.void { color: var(--bad); } .pill.saved { color: var(--warn); }
+.linkbtn { background: none; border: none; color: var(--accent); cursor: pointer; font: inherit; padding: 0 4px; text-decoration: underline; }
+.stats { display: flex; flex-wrap: wrap; gap: 18px; margin-bottom: 12px; font-size: 13px; color: var(--muted); }
+.stats b { color: var(--ink); font-size: 16px; display: block; }
+.notice { font-size: 12px; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--warn); color: var(--ink); background: transparent; line-height: 1.45; }
+.notice b { color: var(--warn); }
+#editBanner { border-color: var(--accent); }
+[data-tab] { display: none; }
+[data-tab].on { display: block; }
+
+/* ---------- The printed sheet: real inches, black on white in every theme ---------- */
+.sheet { width: 8.5in; height: 11in; background: var(--paper); color: var(--paper-ink); position: relative; overflow: hidden; font-family: Arial, Helvetica, "Liberation Sans", sans-serif; }
+.sheet * { color: var(--paper-ink); }
+.sheet .layer { position: absolute; inset: 0; }
+.sheet .a { position: absolute; white-space: nowrap; line-height: 1; }
+.sheet .hl { position: absolute; border-top: 1px solid var(--paper-ink); height: 0; }
+.sheet .box { position: absolute; border: 1px solid #777; }
+.sheet .perf { position: absolute; left: 0; right: 0; border-top: 1px dashed #9ab; }
+.sheet .guide { position: absolute; border: 1px dashed #c33; }
+.sheet .stubline { position: absolute; left: .5in; right: .5in; border-top: 1px solid #999; }
+.sheet .micr { position: absolute; }
+.sheet .micr svg { display: block; }
+.sheet .notes { white-space: pre-wrap; line-height: 1.35; }
+#printRoot { display: none; }
+.syncState { font-size: 12px; color: var(--muted); display: inline-flex; gap: 8px; align-items: baseline; }
+.syncState button { font: inherit; font-size: 12px; background: none; border: 0; padding: 0; color: var(--muted); text-decoration: underline; cursor: pointer; }
+.lock { position: fixed; inset: 0; z-index: 50; background: var(--bg, #f4f6f5); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.lock form { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 22px; width: 100%; max-width: 340px; display: grid; gap: 12px; }
+.lock h2 { margin: 0; font-size: 18px; }
+.lock input { font: inherit; font-size: 16px; padding: 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink); }
+.lock .err { color: #b3261e; font-size: 13px; min-height: 1em; }
+.lock[hidden], .syncState[hidden] { display: none; }
+.pdfHost { position: fixed; left: -20000px; top: 0; }
+.pdfHost .sheet { background: #fff; box-shadow: none; }
+.pdfHost .sheet:not(.test) .perf, .pdfHost .sheet:not(.test) .guide-only { display: none; }
+
+@page { size: letter; margin: 0; }
+@media print {
+  html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
+  :root { padding: 0 !important; }
+  .app { display: none !important; }
+  #printRoot { display: block !important; }
+  #printRoot .sheet { box-shadow: none; page-break-after: avoid; break-after: avoid; }
+  .sheet .perf, .sheet .guide-only { display: none; }
+  .sheet.test .perf, .sheet.test .guide-only { display: block; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="top">
+    <h1>Check Writer</h1>
+    <span class="sub">VersaCheck / ValueChex Form #1000 · check on top</span>
+    <span class="syncState" id="syncState" hidden><span id="syncText"></span><button type="button" id="btnLock">Lock</button></span>
+    <label class="acctPick">Account
+      <select id="acctSelect"></select>
+    </label>
+    <nav class="tabs" role="tablist">
+      <button type="button" role="tab" data-go="write" aria-selected="true">Write check</button>
+      <button type="button" role="tab" data-go="register" aria-selected="false">Register</button>
+      <button type="button" role="tab" data-go="settings" aria-selected="false">Settings &amp; alignment</button>
+    </nav>
+  </header>
+
+  <div class="grid">
+    <div>
+      <!-- WRITE -->
+      <section class="panel on" data-tab="write">
+        <h2 id="writeTitle">New check</h2>
+        <div class="notice" id="editBanner" hidden style="margin-bottom:12px"></div>
+        <form id="checkForm" class="fields" autocomplete="off">
+          <div class="row2">
+            <label class="f">Check number<input id="cNum" class="num" inputmode="numeric"></label>
+            <label class="f">Date<input id="cDate" type="date"></label>
+          </div>
+          <label class="f">Pay to the order of<input id="cPayee" list="payeeList" placeholder="Payee name"></label>
+          <label class="f">Amount ($)<input id="cAmt" class="num" inputmode="decimal" placeholder="0.00"></label>
+          <div class="words" id="cWords" aria-live="polite"></div>
+          <label class="f">Memo (FOR line)<input id="cMemo" list="memoList" placeholder="Invoice, account number, purpose"></label>
+          <label class="f">Payee address (optional, prints under payee for window envelopes)<textarea id="cPayeeAddr" rows="2" placeholder="Street&#10;City, ST ZIP"></textarea></label>
+          <label class="f">Stub details (prints on both stubs)<textarea id="cNotes" rows="3" placeholder="Invoice # / description / breakdown"></textarea></label>
+          <div class="msg" id="cMsg"></div>
+        </form>
+        <div class="btns">
+          <button type="button" class="b primary" id="btnPrint">Print check</button>
+          <button type="button" class="b" id="btnSave">Save to register</button>
+          <button type="button" class="b" id="btnClear">Clear</button>
+        </div>
+        <p class="hint" id="printHint">Print with paper size Letter, scale 100% (or "Actual size"), margins None, and headers/footers off. Load Form #1000 with the check at the top.</p>
+        <datalist id="payeeList"></datalist>
+        <datalist id="memoList"></datalist>
+      </section>
+
+      <!-- REGISTER -->
+      <section class="panel" data-tab="register">
+        <h2 id="regTitle">Check register</h2>
+        <div class="stats" id="regStats"></div>
+        <label class="f" style="margin-bottom:10px">Search<input id="regSearch" placeholder="Payee, memo or check #"></label>
+        <div class="tableScroll"><table class="reg" id="regTable"></table></div>
+        <div class="btns">
+          <button type="button" class="b" id="btnCsv">Export CSV</button>
+          <button type="button" class="b" id="btnBackup">Back up everything (.json)</button>
+          <label class="b" style="display:inline-flex;align-items:center;cursor:pointer">Restore backup<input type="file" id="fileRestore" accept=".json,application/json" hidden></label>
+        </div>
+        <div class="msg" id="regMsg"></div>
+        <p class="hint">The register and your bank details are saved only in this browser on this computer. Use Back up now and then so a cleared browser doesn't lose them.</p>
+      </section>
+
+      <!-- SETTINGS -->
+      <section class="panel" data-tab="settings">
+        <h2>Account on the check</h2>
+        <div class="btns" style="margin-top:0;margin-bottom:12px">
+          <button type="button" class="b" id="btnAddAcct">Add another account</button>
+          <button type="button" class="b" id="btnCopyAcct">Copy this account</button>
+          <button type="button" class="b danger" id="btnDelAcct">Delete this account</button>
+        </div>
+        <div class="msg" id="acctMsg"></div>
+        <div class="fields">
+          <label class="f">Account nickname (shown in the account picker)<input id="sLabel" placeholder="e.g. Personal checking, Business, Church"></label>
+          <label class="f">Name (a second line works for a DBA)<textarea id="sName" rows="2" placeholder="Your name&#10;Business name DBA (optional)"></textarea></label>
+          <label class="f">Address &amp; phone (one per line)<textarea id="sAddr" rows="3" placeholder="Phone&#10;Street&#10;City, ST ZIP"></textarea></label>
+          <label class="f">Bank name<input id="sBank" placeholder="Bank name"></label>
+          <label class="f">Bank city / branch (optional)<input id="sBankCity"></label>
+          <div class="row2">
+            <label class="f">Routing number (9 digits)<input id="sRouting" class="num" inputmode="numeric" maxlength="9"></label>
+            <label class="f">Account number<input id="sAccount" class="num" inputmode="numeric"></label>
+          </div>
+          <div class="msg" id="sRoutingMsg"></div>
+          <div class="row2">
+            <label class="f">Fractional routing (optional)<input id="sFraction" placeholder="e.g. 66-21/530"></label>
+            <label class="f">Next check number<input id="sNext" class="num" inputmode="numeric"></label>
+          </div>
+          <div class="row2">
+            <label class="f">Bank logo (PNG or JPG; prints under the amount line)<input id="sLogo" type="file" accept="image/*"></label>
+            <label class="f">Signature (photo or scan of your signature; prints on the signature line)<input id="sSig" type="file" accept="image/*"></label>
+          </div>
+          <label class="f">Business logo (optional, prints at the top left)<input id="sBizLogo" type="file" accept="image/*"></label>
+          <label class="f">Saved memos (one per line; they show as choices on the FOR line)<textarea id="sMemos" rows="2" placeholder="Tithes &amp; Offering #6961"></textarea></label>
+          <label class="chk"><input type="checkbox" id="sHideBank"> The logo already shows the bank's name, so don't print the name next to it</label>
+          <div class="btns" style="margin-top:0">
+            <button type="button" class="b" id="btnNoLogo">Remove logo</button>
+            <button type="button" class="b" id="btnNoSig">Remove signature</button>
+            <button type="button" class="b" id="btnNoBiz">Remove business logo</button>
+          </div>
+        </div>
+
+        <h3>Bottom (MICR) line</h3>
+        <p class="hint" style="margin-top:0">Order is saved per account. The MICR font and everything under Printing apply to all accounts.</p>
+        <div class="fields">
+          <label class="f">Order
+            <select id="sMicrStyle">
+              <option value="personal">Personal: routing, account, check # (like your PDF)</option>
+              <option value="business">Business: check # first, then routing, account</option>
+            </select>
+          </label>
+          <label class="f">MICR characters
+            <select id="sMicrFont">
+              <option value="builtin">Built-in E-13B drawing (no font needed)</option>
+              <option value="font">Use a MICR font installed on this computer</option>
+            </select>
+          </label>
+          <label class="chk"><input type="checkbox" id="sSkipT"> Don't print the first ⑆ symbol (leave it off and use the light one on the paper)</label>
+          <div class="row3" id="micrFontRow">
+            <label class="f">Font name<input id="sMicrFontName" placeholder="MICR E13B"></label>
+            <label class="f">Size (pt)<input id="sMicrSize" class="num" inputmode="decimal"></label>
+            <label class="f">Transit / On-Us keys<input id="sMicrKeys" placeholder="A,C"></label>
+          </div>
+        </div>
+
+        <h3>Printing</h3>
+        <div class="fields">
+          <label class="chk"><input type="checkbox" id="sLines"> Print lines, labels and amount box (blank stock needs these)</label>
+          <div class="row2">
+            <label class="f">Stubs to print
+              <select id="sStubCount"><option value="1">First stub only (like your PDFs)</option><option value="2">Both stubs</option><option value="0">None</option></select>
+            </label>
+            <label class="f">Stub layout
+              <select id="sStubStyle"><option value="paidto">Paid To &amp; Reason (like your PDFs)</option><option value="detailed">Detailed with name and labels</option></select>
+            </label>
+          </div>
+          <label class="chk"><input type="checkbox" id="sStars"> Protect amount box with asterisks ($****250.00)</label>
+          <label class="f">Check paper
+            <select id="sPaper"><option value="qb">VersaCheck for QuickBooks: check 3½", stubs 3½" and 4"</option><option value="valuechex">ValueChex retail: perforations at 3½", 7", 10½"</option></select>
+          </label>
+          <div class="nudgeWrap">
+            <div class="nudge">
+              <div class="nudgeTitle">Bottom bank-number line</div>
+              <div class="pad">
+                <span></span><button type="button" class="b arrow" data-n="micr" data-dx="0" data-dy="-1" aria-label="Move bottom line up">↑</button><span></span>
+                <button type="button" class="b arrow" data-n="micr" data-dx="-1" data-dy="0" aria-label="Move bottom line left">←</button><button type="button" class="b arrow reset" data-n="micr" data-reset="1">Reset</button><button type="button" class="b arrow" data-n="micr" data-dx="1" data-dy="0" aria-label="Move bottom line right">→</button>
+                <span></span><button type="button" class="b arrow" data-n="micr" data-dx="0" data-dy="1" aria-label="Move bottom line down">↓</button><span></span>
+              </div>
+              <div class="readout num" id="roMicr"></div>
+            </div>
+            <div class="nudge">
+              <div class="nudgeTitle">Everything on the page</div>
+              <div class="pad">
+                <span></span><button type="button" class="b arrow" data-n="all" data-dx="0" data-dy="-1" aria-label="Move everything up">↑</button><span></span>
+                <button type="button" class="b arrow" data-n="all" data-dx="-1" data-dy="0" aria-label="Move everything left">←</button><button type="button" class="b arrow reset" data-n="all" data-reset="1">Reset</button><button type="button" class="b arrow" data-n="all" data-dx="1" data-dy="0" aria-label="Move everything right">→</button>
+                <span></span><button type="button" class="b arrow" data-n="all" data-dx="0" data-dy="1" aria-label="Move everything down">↓</button><span></span>
+              </div>
+              <div class="readout num" id="roAll"></div>
+            </div>
+          </div>
+          <label class="f" style="max-width:260px">Each arrow click moves
+            <select id="nudgeStep"><option value="0.001">0.001 inch</option><option value="0.002" selected>0.002 inch</option><option value="0.005">0.005 inch</option><option value="0.01">0.01 inch</option><option value="0.02">0.02 inch</option><option value="0.05">0.05 inch</option></select>
+          </label>
+          <details class="hint"><summary>Type exact numbers instead</summary>
+            <div class="row2" style="margin-top:8px">
+              <label class="f">Everything right (in)<input id="sOffX" class="num" inputmode="decimal"></label>
+              <label class="f">Everything down (in)<input id="sOffY" class="num" inputmode="decimal"></label>
+              <label class="f">Bottom line right (in)<input id="sMicrX" class="num" inputmode="decimal"></label>
+              <label class="f">Bottom line down (in)<input id="sMicrY" class="num" inputmode="decimal"></label>
+            </div>
+          </details>
+          <p class="hint">Print the alignment test on plain paper and hold it over a check sheet against a light. The dashed red lines should sit on the perforations, and the printed ⑆ in the small red box should land on the light ⑆ on the paper. Use the arrows to move things, then test again. 0.002 inch is about one printer dot, so use a bigger step if you can't see a change.</p>
+          <div class="btns" style="margin-top:0">
+            <button type="button" class="b" id="btnTest">Print alignment test</button>
+            <button type="button" class="b" id="btnSample">Print sample check on plain paper</button>
+          </div>
+        </div>
+        <div class="msg" id="sMsg"></div>
+        <p class="hint">Settings save automatically in this browser.</p>
+      </section>
+    </div>
+
+    <section class="panel">
+      <div class="previewBar">
+        <h2 style="margin:0">Preview · full 8½ × 11 sheet</h2>
+        <label class="chk"><input type="checkbox" id="pGuides" checked> Show perforations</label>
+      </div>
+      <div class="notice" id="setupNotice" hidden><b>Set up your account first.</b> Add your name, bank, routing and account numbers under Settings &amp; alignment. The preview below uses example details until then.</div>
+      <div class="previewWrap" style="margin-top:10px"><div class="scaleBox" id="scaleBox"></div></div>
+    </section>
+  </div>
+</div>
+
+<div id="printRoot"></div>
+<div class="lock" id="lock" hidden>
+  <form id="lockForm">
+    <h2>Check Writer</h2>
+    <label for="lockCode">Access code</label>
+    <input type="password" id="lockCode" autocomplete="current-password" required>
+    <div class="err" id="lockErr"></div>
+    <button type="submit" class="b primary">Open</button>
+  </form>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const KEY = "checkwriter.v1";
+  const IN_FRAME = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+
+  /* ---------------- state ----------------
+     accounts: one entry per bank account (who's on the check, bank numbers, next check #).
+     global: printer and MICR settings shared by every account.
+     register: every check, tagged with the account it was drawn on. */
+  const ACCOUNT_KEYS = ["bizLogo", "memos", "hideBankName", "label", "name", "addr", "bank", "bankCity", "routing", "account", "fraction", "next", "logo", "sig", "micrStyle"];
+  const ACCOUNT_DEFAULTS = { bizLogo: "", memos: "", hideBankName: false, label: "", name: "", addr: "", bank: "", bankCity: "", routing: "", account: "", fraction: "", next: 1001, logo: "", sig: "", micrStyle: "personal" };
+  const GLOBAL_DEFAULTS = { micrFont: "builtin", micrFontName: "MICR E13B", micrSize: 12, micrKeys: "A,C", lines: true, stubs: true, stubCount: "1", stubStyle: "paidto", stars: false, skipFirstT: false, paper: "qb", offX: 0, offY: 0, micrX: -0.002, micrY: -0.002 };
+  const EXAMPLE = { name: "Your Name", addr: "555-123-4567\n123 Main Street\nAnytown, ST 12345", bank: "Your Bank", bankCity: "", routing: "011000015", account: "000123456789", fraction: "" };
+  const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  function newAccount(extra) { return Object.assign({ id: newId() }, ACCOUNT_DEFAULTS, extra || {}); }
+  function normalize(d) {
+    d = d || {};
+    let accounts = Array.isArray(d.accounts) ? d.accounts.map((a) => Object.assign({}, ACCOUNT_DEFAULTS, a, { id: a.id || newId() })) : [];
+    const global = Object.assign({}, GLOBAL_DEFAULTS, d.global || {});
+    if (d.global && d.global.stubCount == null && d.global.stubs === false) global.stubCount = "0";
+    if (d.global && !d.global.alignV2) {
+      // v2 alignment: print the first ⑆ on top of the paper's light one; bottom line 0.002" up and left
+      delete global.preT;
+      global.skipFirstT = false;
+      global.micrX = (+global.micrX || 0) - 0.002;
+      global.micrY = (+global.micrY || 0) - 0.002;
+    }
+    global.alignV2 = true;
+    let register = Array.isArray(d.register) ? d.register : [];
+    if (!accounts.length) {
+      // version 1 kept a single account inside "settings"
+      const old = d.settings || {};
+      const a = newAccount();
+      ACCOUNT_KEYS.forEach((k) => { if (old[k] != null) a[k] = old[k]; });
+      Object.keys(GLOBAL_DEFAULTS).forEach((k) => { if (old[k] != null) global[k] = old[k]; });
+      accounts = [a];
+    }
+    const ids = new Set(accounts.map((a) => a.id));
+    register = register.map((r) => (ids.has(r.accountId) ? r : Object.assign({}, r, { accountId: accounts[0].id })));
+    const activeId = ids.has(d.activeId) ? d.activeId : accounts[0].id;
+    return { accounts, global, register, activeId, draft: d.draft || null };
+  }
+  let state = load();
+  function load() {
+    try { const raw = localStorage.getItem(KEY); if (raw) return normalize(JSON.parse(raw)); } catch (e) {}
+    return normalize({});
+  }
+  function acct() { return state.accounts.find((a) => a.id === state.activeId) || state.accounts[0]; }
+  function reg() { const id = acct().id; return state.register.filter((r) => r.accountId === id); }
+  function acctName(a) { return a.label || String(a.name || "").split("\n")[0].replace(/,\s*$/, "") || a.bank || "Unnamed account"; }
+  // One settings view for the rest of the app: account fields go to the active account, the rest are shared.
+  const S = new Proxy({}, {
+    get: (_, k) => (ACCOUNT_KEYS.includes(k) ? acct()[k] : state.global[k]),
+    set: (_, k, v) => { if (ACCOUNT_KEYS.includes(k)) acct()[k] = v; else state.global[k] = v; return true; },
+    ownKeys: () => ACCOUNT_KEYS.concat(Object.keys(GLOBAL_DEFAULTS)),
+    getOwnPropertyDescriptor: (_, k) => ({ enumerable: true, configurable: true, writable: true, value: ACCOUNT_KEYS.includes(k) ? acct()[k] : state.global[k] })
+  });
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); queuePush(); return true; }
+    catch (e) { flash("sMsg", "Couldn't save in this browser (storage full or blocked). Back up from the Register tab.", "bad"); return false; }
+  }
+
+  /* ---------------- helpers ---------------- */
+  const ONES = ["Zero","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"];
+  const TENS = ["","","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
+  function under1000(n) {
+    const out = [];
+    if (n >= 100) { out.push(ONES[Math.floor(n / 100)] + " Hundred"); n %= 100; }
+    if (n >= 20) { out.push(TENS[Math.floor(n / 10)] + (n % 10 ? "-" + ONES[n % 10] : "")); }
+    else if (n > 0) out.push(ONES[n]);
+    return out.join(" ");
+  }
+  function dollarsToWords(n) {
+    if (n === 0) return "Zero";
+    const parts = [];
+    [[1e9, "Billion"], [1e6, "Million"], [1e3, "Thousand"], [1, ""]].forEach(([v, name]) => {
+      const chunk = Math.floor(n / v) % 1000;
+      if (chunk) parts.push(under1000(chunk) + (name ? " " + name : ""));
+    });
+    return parts.join(" ");
+  }
+  function parseAmount(s) {
+    const clean = String(s || "").replace(/[$,\s]/g, "");
+    if (!/^\d*(\.\d{0,2})?$/.test(clean) || clean === "" || clean === ".") return null;
+    const cents = Math.round(parseFloat(clean) * 100);
+    if (!isFinite(cents) || cents <= 0 || cents >= 1e11) return null;
+    return cents;
+  }
+  function amountWords(cents) {
+    const d = Math.floor(cents / 100), c = cents % 100;
+    return dollarsToWords(d) + " and " + String(c).padStart(2, "0") + "/100";
+  }
+  function money(cents) { return (cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function fmtDate(iso) { if (!iso) return ""; const [y, m, d] = iso.split("-"); return m + "/" + d + "/" + y; }
+  function todayIso() { const t = new Date(); return t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0"); }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+  function abaValid(r) {
+    if (!/^\d{9}$/.test(r)) return false;
+    const d = r.split("").map(Number);
+    return (3 * (d[0] + d[3] + d[6]) + 7 * (d[1] + d[4] + d[7]) + (d[2] + d[5] + d[8])) % 10 === 0;
+  }
+  const measureCtx = document.createElement("canvas").getContext("2d");
+  function textWidthIn(text, pt, family) {
+    measureCtx.font = pt + "pt " + (family || "Arial, Helvetica, sans-serif");
+    return measureCtx.measureText(text).width / 96; // px -> inches at 96 css px/in
+  }
+  function fitPt(text, maxIn, pt, minPt) {
+    while (pt > minPt && textWidthIn(text, pt) > maxIn) pt -= 0.5;
+    return pt;
+  }
+  function flash(id, text, kind) { const el = $(id); el.textContent = text; el.className = "msg " + (kind || ""); }
+
+  /* ---------------- MICR E-13B ----------------
+     Glyph outlines traced from an E-13B reference sheet (MIT-licensed, @sclaflin/micr-scanner).
+     Units are reference pixels: glyphs are 37 px tall = 0.117 in, characters sit on a 0.125 in pitch. */
+  const G = {"1":[15,[[1,0,5,1],[0,1,7,5],[1,6,6,1],[3,7,4,12],[3,19,5,1],[0,20,14,1],[0,21,15,14],[1,35,12,1]]],"2":[15,[[1,0,13,1],[0,1,15,3],[1,4,14,1],[11,5,4,11],[0,16,15,4],[0,20,4,11],[0,31,5,1],[0,32,15,3],[1,35,13,1]]],"3":[19,[[1,0,13,1],[0,1,15,3],[1,4,14,1],[11,5,4,2],[12,7,3,7],[11,14,4,2],[1,16,14,1],[0,17,16,1],[0,18,19,2],[11,20,8,2],[12,22,7,8],[11,30,8,1],[10,31,9,1],[0,32,19,3],[1,35,17,1]]],"4":[23,[[2,0,5,1],[1,1,7,1],[16,20,7,2],[0,2,8,21],[0,23,9,1],[15,22,8,2],[0,24,23,3],[1,27,22,1],[15,28,8,1],[16,29,7,6],[17,35,5,1]]],"5":[20,[[1,0,17,1],[1,1,18,1],[0,2,20,2],[0,4,19,1],[0,5,5,1],[0,6,4,9],[0,15,5,1],[0,16,19,1],[0,17,20,2],[1,19,19,1],[15,20,5,1],[16,21,4,9],[15,30,5,1],[14,31,6,1],[0,32,20,2],[0,34,19,1],[2,35,16,1]]],"6":[24,[[2,0,13,1],[1,1,15,4],[1,5,4,2],[12,5,4,5],[13,10,2,1],[1,7,3,11],[1,18,4,2],[1,20,22,1],[1,21,23,3],[19,24,5,1],[1,24,4,2],[1,26,3,4],[1,30,4,1],[20,25,4,6],[1,31,5,1],[18,31,6,1],[1,32,23,1],[0,33,24,1],[1,34,23,1],[2,35,20,1]]],"7":[19,[[1,0,17,1],[0,1,19,4],[14,5,5,1],[0,5,4,6],[0,11,3,1],[15,6,4,7],[14,13,5,1],[13,14,6,1],[10,15,9,1],[8,16,10,1],[7,17,9,1],[7,18,7,1],[7,19,5,1],[7,20,4,15]]],"8":[27,[[5,0,17,1],[4,1,19,4],[4,5,4,11],[19,5,4,11],[4,16,19,1],[3,17,21,1],[1,18,25,1],[0,19,27,1],[0,20,9,1],[18,20,9,1],[0,21,8,10],[19,21,8,10],[0,31,9,1],[18,31,9,1],[0,32,27,3],[2,35,24,1]]],"9":[23,[[1,0,21,1],[0,1,23,4],[0,5,4,10],[0,15,5,1],[19,5,4,11],[0,16,23,4],[14,20,9,1],[15,21,8,13],[16,34,7,1],[17,35,5,1]]],"0":[28,[[7,0,14,1],[5,1,18,1],[3,2,22,1],[2,3,24,1],[1,4,25,1],[1,5,5,1],[22,5,5,1],[1,6,4,1],[0,7,5,1],[23,6,4,2],[23,8,5,20],[0,8,4,21],[0,29,5,1],[23,28,4,2],[1,30,5,1],[22,30,5,1],[1,31,6,1],[20,31,7,1],[2,32,24,1],[3,33,22,1],[4,34,19,1],[7,35,14,1]]],"T":[28,[[17,0,10,1],[16,1,11,1],[1,7,7,1],[16,2,12,9],[16,11,11,1],[17,24,10,1],[0,8,8,20],[1,28,7,2],[16,25,12,10],[17,35,9,1]]],"U":[27,[[0,7,3,1],[8,7,3,1],[15,3,12,14],[15,17,11,1],[0,8,4,21],[7,8,4,21],[1,29,2,1],[8,29,2,1]]],"A":[26,[[20,0,5,1],[12,9,2,1],[19,1,7,15],[11,10,4,16],[12,26,2,1],[0,20,7,15]]],"D":[28,[[23,11,4,1],[23,12,5,1],[11,11,8,14],[23,13,4,12],[0,11,7,15],[12,25,7,1],[23,25,3,1]]]};
+  const PITCH = 0.125, GH = 37, PX_PER_IN = GH / 0.117, CELL = PITCH * PX_PER_IN, MICR_H = 0.117;
+  function micrSvg(str) {
+    const n = str.length;
+    let rects = "";
+    for (let i = 0; i < n; i++) {
+      const g = G[str[i]]; if (!g) continue;
+      const ox = i * CELL + (CELL - g[0]) / 2;
+      g[1].forEach((r) => { rects += '<rect x="' + (ox + r[0]).toFixed(2) + '" y="' + r[1] + '" width="' + r[2] + '" height="' + r[3] + '"/>'; });
+    }
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="' + (n * PITCH) + 'in" height="' + MICR_H + 'in" viewBox="0 0 ' + (n * CELL).toFixed(2) + " " + GH + '" fill="#000" shape-rendering="crispEdges">' + rects + "</svg>";
+  }
+  // Place a MICR string so that its LAST character sits in ANSI X9 position `pos`
+  // (position 1 is 5/16" from the check's right edge, counting leftward).
+  const CHECK_RIGHT = 8.5, CHAR_BOTTOM = 3.5 - 0.1875;
+  function micrAt(str, endPos, s) {
+    if (!str) return "";
+    const rightEdge = CHECK_RIGHT - 0.3125 - (endPos - 1) * PITCH;
+    const left = rightEdge - str.length * PITCH + (+s.micrX || 0);
+    const top = CHAR_BOTTOM - MICR_H + (+s.micrY || 0);
+    if (s.micrFont === "font") {
+      const keys = (s.micrKeys || "A,C").split(",").map((k) => k.trim());
+      const map = { T: keys[0] || "A", U: keys[1] || "C", A: "B", D: "D" };
+      let spans = "";
+      for (let i = 0; i < str.length; i++) {
+        const ch = map[str[i]] || str[i];
+        spans += '<span style="position:absolute;left:' + (i * PITCH) + 'in;bottom:0;width:' + PITCH + 'in;text-align:center">' + esc(ch === " " ? "" : ch) + "</span>";
+      }
+      return '<div class="micr" style="left:' + left + "in;top:" + (CHAR_BOTTOM - 0.25 + (+s.micrY || 0)) + "in;width:" + (str.length * PITCH) + 'in;height:0.25in;font-family:\'' + esc(s.micrFontName) + "';font-size:" + (+s.micrSize || 12) + 'pt;line-height:1">' + spans + "</div>";
+    }
+    return '<div class="micr" style="left:' + left + "in;top:" + top + 'in">' + micrSvg(str) + "</div>";
+  }
+  function micrLine(s, checkNo) {
+    const routing = (s.routing || "").replace(/\D/g, "");
+    const account = (s.account || "").replace(/[^\d-]/g, "").replace(/-/g, "D");
+    const num = String(checkNo || "").replace(/\D/g, "");
+    // transit field: positions 43..33. Form #1000 has the position-43 symbol pre-printed as an alignment mark.
+    let html = micrAt((s.skipFirstT ? " " : "T") + routing + "T", 33, s);
+    if (s.micrStyle === "business") {
+      html += micrAt("U" + num.padStart(6, "0") + "U", 45, s); // auxiliary on-us, left of transit
+      html += micrAt(account + "U", 14, s);
+    } else {
+      // account + on-us symbol starts one space after transit; check number ends at position 14 when it fits
+      const acct = account + "U";
+      const acctEnd = 31 - acct.length + 1;
+      html += micrAt(acct, acctEnd, s);
+      // keep one blank position after the on-us symbol
+      html += micrAt(num, Math.min(14, acctEnd - 1 - num.length), s);
+    }
+    return html;
+  }
+
+  /* ---------------- sheet rendering ---------------- */
+  function A(left, top, inner, style) { return '<div class="a" style="left:' + left + "in;top:" + top + "in;" + (style || "") + '">' + inner + "</div>"; }
+  function HL(left, top, width) { return '<div class="hl" style="left:' + left + "in;top:" + top + "in;width:" + width + 'in"></div>'; }
+
+  function renderCheck(c, s) {
+    const L = s.lines;
+    let h = "";
+    // drawer block
+    const addr = (s.addr || "").split("\n").filter(Boolean);
+    const names = (s.name || "").split("\n").filter(Boolean);
+    const nx = s.bizLogo ? 1.56 : 0.45;
+    if (s.bizLogo) h += '<img src="' + s.bizLogo + '" alt="" style="position:absolute;left:0.2in;top:0.25in;max-width:1.32in;max-height:0.85in">';
+    names.forEach((line, i) => { h += A(nx, 0.24 + i * 0.19, esc(line), "font-size:" + (names.length > 1 ? 12 : 13) + "pt;font-weight:700"); });
+    const ay = 0.24 + Math.max(1, names.length) * (names.length > 1 ? 0.19 : 0.23);
+    addr.forEach((line, i) => { h += A(nx, ay + i * 0.15, esc(line), "font-size:9.5pt"); });
+    // check number + fractional routing
+    h += A(6.6, 0.34, esc(c.num), "width:1.6in;text-align:right;font-size:18pt");
+    if (s.fraction) h += A(6.6, 0.62, esc(s.fraction), "width:1.6in;text-align:right;font-size:7.5pt");
+    // date
+    if (L) h += A(6.15, 0.9, "DATE:", "font-size:8pt;font-weight:700");
+    h += A(6.55, 0.88, esc(fmtDate(c.date)), "font-size:10.5pt");
+    if (L) h += HL(6.52, 1.05, 1.0);
+    // pay to the order of
+    if (L) h += A(0.38, 1.21, 'PAY<div style="font-size:5.5pt;margin-top:2px;line-height:1.15">TO THE<br>ORDER OF</div>', "font-size:8pt");
+    const payeePt = fitPt(c.payee || "", 5.9, 14, 9);
+    h += A(0.86, 1.36, esc(c.payee), "font-size:" + payeePt + "pt");
+    if (L) h += HL(0.83, 1.58, 6.03);
+    // amount box
+    const amtTxt = c.cents ? (s.stars ? "$" + "*".repeat(Math.max(0, 11 - money(c.cents).length)) + money(c.cents) : "$ " + money(c.cents)) : "$";
+    if (L) h += '<div class="box" style="left:7.1in;top:1.28in;width:0.98in;height:0.29in"></div>';
+    h += A(7.1, 1.33, esc(amtTxt), "width:0.98in;text-align:center;font-size:" + (s.stars ? 12 : 14) + "pt");
+    // amount in words with asterisk fill
+    if (c.cents) {
+      const maxW = 6.9;
+      const base = amountWords(c.cents);
+      const pt = fitPt(base, maxW - 0.3, 14, 8);
+      let stars = "";
+      const starW = textWidthIn("*", pt) || 0.06;
+      const room = maxW - textWidthIn(base, pt);
+      if (room > 0) stars = "*".repeat(Math.floor(room / starW));
+      h += A(0.36, 1.72, esc(base + stars), "font-size:" + pt + "pt");
+    }
+    if (L) { h += HL(0.3, 1.93, 7.0); h += A(7.33, 1.74, "DOLLARS", "font-size:13pt"); }
+    // payee address (window envelope area)
+    const pa = (c.payeeAddr || "").split("\n").filter(Boolean);
+    if (pa.length) {
+      h += A(0.86, 1.98, esc(c.payee), "font-size:9pt");
+      pa.slice(0, 3).forEach((line, i) => { h += A(0.86, 2.12 + i * 0.13, esc(line), "font-size:9pt"); });
+    }
+    // bank
+    // bank block sits under the words line; it moves right when a payee address uses that spot
+    // square logos (Wells Fargo) and wide wordmarks (Truist) both fit: up to 2" wide, 0.45" tall
+    const showName = s.bank && !(s.logo && s.hideBankName);
+    let bankHtml = "";
+    if (s.logo) bankHtml += '<img src="' + s.logo + '" alt="" style="display:block;max-width:2in;max-height:0.45in;width:auto;height:auto">';
+    if (showName || s.bankCity) bankHtml += '<div style="line-height:1.25;padding-top:0.04in">' + (showName ? '<div style="font-size:8.5pt;font-weight:700">' + esc(s.bank) + "</div>" : "") + (s.bankCity ? '<div style="font-size:7.5pt">' + esc(s.bankCity) + "</div>" : "") + "</div>";
+    if (bankHtml) h += '<div style="position:absolute;left:' + (pa.length ? 3.4 : 0.77) + 'in;top:1.99in;height:0.47in;display:flex;gap:0.06in;align-items:flex-start;overflow:hidden">' + bankHtml + "</div>";
+    // memo
+    if (L) h += A(0.38, 2.62, "FOR", "font-size:7pt;font-weight:700");
+    const memoPt = fitPt(c.memo || "", 3.6, 12, 8);
+    h += A(0.72, 2.55, esc(c.memo), "font-size:" + memoPt + "pt");
+    if (L) h += HL(0.68, 2.74, 3.7);
+    // signature
+    if (s.sig) h += '<img src="' + s.sig + '" alt="" style="position:absolute;left:5.6in;top:2.28in;max-width:2.5in;max-height:0.48in;mix-blend-mode:multiply">';
+    if (L) { h += HL(5.37, 2.74, 2.81); h += A(5.37, 2.79, "AUTHORIZED SIGNATURE", "font-size:5.5pt;letter-spacing:.06em"); }
+    // MICR
+    h += micrLine(s, c.num);
+    return h;
+  }
+
+  function renderStubPaidTo(c, s, top) {
+    // matches the stub on the HPWS / M&R / Equity Line PDFs
+    let h = "";
+    h += A(0.72, top + 1.03, "Paid To &amp; Reason", "font-size:8.5pt;font-weight:700");
+    h += A(0.72, top + 1.36, esc(c.payee), "font-size:12pt");
+    h += A(0.72, top + 1.73, esc(c.memo), "font-size:12pt");
+    if (c.notes) h += '<div class="a notes" style="left:0.72in;top:' + (top + 2.08) + 'in;width:5in;max-height:1.2in;overflow:hidden;font-size:10pt">' + esc(c.notes) + "</div>";
+    h += A(6.0, top + 1.36, "Check No.", "font-size:11pt;width:1.3in;text-align:right");
+    h += A(7.42, top + 1.35, esc(c.num), "font-size:11.5pt");
+    h += A(6.0, top + 1.67, "Date", "font-size:9.5pt;width:1.3in;text-align:right");
+    h += A(7.42, top + 1.66, esc(fmtDate(c.date)), "font-size:9.5pt");
+    h += A(6.0, top + 1.99, "Amount", "font-size:9.5pt;width:1.3in;text-align:right");
+    h += A(7.42, top + 1.96, c.cents ? "$ " + money(c.cents) : "", "font-size:12pt");
+    return h;
+  }
+  function renderStub(c, s, top, title) {
+    if (s.stubStyle === "paidto") return renderStubPaidTo(c, s, top);
+    let h = "";
+    const x = 0.5;
+    h += A(x, top + 0.35, esc(s.name), "font-size:11pt;font-weight:700");
+    h += A(5.5, top + 0.35, esc(title), "width:2.5in;text-align:right;font-size:8pt;letter-spacing:.08em");
+    h += '<div class="stubline" style="top:' + (top + 0.62) + 'in"></div>';
+    const rows = [["Check #", c.num], ["Date", fmtDate(c.date)], ["Pay to", c.payee], ["Amount", c.cents ? "$" + money(c.cents) : ""], ["Memo", c.memo]];
+    rows.forEach((r, i) => {
+      h += A(x, top + 0.78 + i * 0.24, esc(r[0]), "font-size:8pt;color:#444;font-weight:700;letter-spacing:.04em");
+      h += A(x + 0.9, top + 0.76 + i * 0.24, esc(r[1]), "font-size:10.5pt");
+    });
+    if (c.notes) {
+      h += A(x, top + 2.06, "DETAILS", "font-size:8pt;font-weight:700;letter-spacing:.04em");
+      h += '<div class="a notes" style="left:' + x + "in;top:" + (top + 2.24) + 'in;width:7.5in;max-height:1.0in;overflow:hidden;white-space:pre-wrap;font-size:9.5pt">' + esc(c.notes) + "</div>";
+    }
+    return h;
+  }
+
+  // VersaCheck for QuickBooks: check 3.5", middle stub 3.5", bottom stub 4". ValueChex retail: extra perf at 10.5".
+  function perfs(s) { return s.paper === "valuechex" ? [3.5, 7, 10.5] : [3.5, 7]; }
+  function sheetHtml(c, s, opts) {
+    opts = opts || {};
+    let inner = "";
+    if (opts.test) {
+      inner += '<div class="guide" style="left:0.25in;top:0.2in;right:0.25in;height:2.8in"></div>';
+      inner += A(3.0, 0.62, "ALIGNMENT TEST · plain paper only", "font-size:8pt;color:#c33");
+      perfs(s).forEach((y) => { inner += '<div style="position:absolute;left:0;right:0;top:' + y + 'in;border-top:1.5px dashed #c33"></div>' + A(0.3, y + 0.05, 'perforation ' + y + '"', "font-size:8pt;color:#c33"); });
+      for (let i = 1; i < 8.5; i++) inner += '<div style="position:absolute;left:' + i + 'in;top:0;height:0.15in;border-left:1px solid #c33"></div>' + A(i + 0.03, 0.02, i + '"', "font-size:6pt;color:#c33");
+      for (let i = 1; i < 11; i++) inner += '<div style="position:absolute;top:' + i + 'in;left:0;width:0.15in;border-top:1px solid #c33"></div>';
+      // box around ANSI position 43, where the paper's pre-printed ⑆ symbol should sit
+      const p43 = CHECK_RIGHT - 0.3125 - 43 * PITCH + (+s.micrX || 0);
+      inner += '<div style="position:absolute;left:' + (p43 - 0.03) + 'in;top:' + (CHAR_BOTTOM - MICR_H - 0.04 + (+s.micrY || 0)) + 'in;width:' + (PITCH + 0.06) + 'in;height:' + (MICR_H + 0.08) + 'in;border:1px solid #c33"></div>';
+      inner += A(p43 - 0.03, CHAR_BOTTOM + 0.07 + (+s.micrY || 0), "↑ this ⑆ should print exactly on top of the light ⑆ on your check paper", "font-size:7pt;color:#c33");
+    } else {
+      perfs(s).forEach((y) => { inner += '<div class="perf guide-only" style="top:' + y + 'in"></div>'; });
+    }
+    inner += renderCheck(c, s);
+    const nStubs = parseInt(s.stubCount, 10) || 0;
+    if (nStubs >= 1) inner += renderStub(c, s, 3.5, "PAYEE COPY");
+    if (nStubs >= 2) inner += renderStub(c, s, 7, "FILE COPY");
+    const off = "transform:translate(" + (+s.offX || 0) + "in," + (+s.offY || 0) + "in)";
+    return '<div class="sheet' + (opts.test ? " test" : "") + '"><div class="layer" style="' + off + '">' + inner + "</div></div>";
+  }
+
+  /* ---------------- form <-> state ---------------- */
+  function currentCheck() {
+    return {
+      num: $("cNum").value.trim(),
+      date: $("cDate").value,
+      payee: $("cPayee").value.trim(),
+      cents: parseAmount($("cAmt").value),
+      memo: $("cMemo").value.trim(),
+      payeeAddr: $("cPayeeAddr").value.trim(),
+      notes: $("cNotes").value.trim()
+    };
+  }
+  function effectiveSettings() {
+    const s = Object.assign({}, S);
+    if (!s.name && !s.routing && !s.account) Object.assign(s, EXAMPLE);
+    return s;
+  }
+  function settingsReady() { const s = S; return !!(s.name && abaValid(s.routing) && s.account); }
+
+  const SETTING_FIELDS = { sLabel: "label", sName: "name", sAddr: "addr", sBank: "bank", sBankCity: "bankCity", sRouting: "routing", sAccount: "account", sFraction: "fraction", sNext: "next", sMicrStyle: "micrStyle", sPaper: "paper", sStubCount: "stubCount", sStubStyle: "stubStyle", sMemos: "memos", sMicrFont: "micrFont", sMicrFontName: "micrFontName", sMicrSize: "micrSize", sMicrKeys: "micrKeys", sOffX: "offX", sOffY: "offY", sMicrX: "micrX", sMicrY: "micrY" };
+  const SETTING_CHECKS = { sLines: "lines", sStars: "stars", sSkipT: "skipFirstT", sHideBank: "hideBankName" };
+  function fillSettings() {
+    Object.entries(SETTING_FIELDS).forEach(([id, k]) => { $(id).value = S[k] == null ? "" : S[k]; });
+    Object.entries(SETTING_CHECKS).forEach(([id, k]) => { $(id).checked = !!S[k]; });
+    $("micrFontRow").hidden = S.micrFont !== "font";
+    if ($("roMicr")) showShifts();
+    validateRouting();
+  }
+  function validateRouting() {
+    const r = $("sRouting").value.trim();
+    if (!r) flash("sRoutingMsg", "", "");
+    else if (abaValid(r)) flash("sRoutingMsg", "Routing number checks out.", "good");
+    else flash("sRoutingMsg", "That routing number fails the bank checksum. Check the 9 digits against a check or your bank's website.", "bad");
+  }
+  Object.entries(SETTING_FIELDS).forEach(([id, k]) => {
+    $(id).addEventListener("input", () => {
+      let v = $(id).value;
+      if (["offX", "offY", "micrX", "micrY", "micrSize"].includes(k)) { const n = parseFloat(v); v = isFinite(n) ? n : 0; }
+      if (k === "next") { const n = parseInt(v, 10); v = isFinite(n) ? n : ""; }
+      S[k] = v;
+      if (k === "routing") validateRouting();
+      if (["label", "name", "bank", "account"].includes(k)) renderAccounts(true);
+      if (k === "memos") lists();
+      if (["offX", "offY", "micrX", "micrY"].includes(k)) showShifts();
+      if (k === "micrFont") $("micrFontRow").hidden = v !== "font";
+      if (k === "next" && v !== "" && !$("cNum").dataset.touched) $("cNum").value = v;
+      save(); refresh();
+    });
+  });
+  Object.entries(SETTING_CHECKS).forEach(([id, k]) => { $(id).addEventListener("change", () => { S[k] = $(id).checked; save(); refresh(); }); });
+  function readImage(input, key) {
+    const f = input.files && input.files[0]; if (!f) return;
+    if (f.size > 3e6) { flash("sMsg", "That image is over 3 MB. Use a smaller PNG or JPG.", "bad"); input.value = ""; return; }
+    const fr = new FileReader();
+    fr.onload = () => {
+      // shrink big images so they don't fill up browser storage (600 px is plenty at 0.45" tall)
+      const img = new Image();
+      img.onload = () => {
+        const k = Math.min(1, 600 / Math.max(img.width, img.height));
+        const cv = document.createElement("canvas");
+        cv.width = Math.max(1, Math.round(img.width * k)); cv.height = Math.max(1, Math.round(img.height * k));
+        cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+        S[key] = k < 1 ? cv.toDataURL("image/png") : fr.result;
+        save(); refresh(); flash("sMsg", { logo: "Bank logo added.", sig: "Signature added.", bizLogo: "Business logo added." }[key], "good");
+      };
+      img.onerror = () => flash("sMsg", "That file couldn't be read as an image. Use a PNG or JPG.", "bad");
+      img.src = fr.result;
+    };
+    fr.readAsDataURL(f);
+  }
+  $("sLogo").addEventListener("change", (e) => readImage(e.target, "logo"));
+  $("sSig").addEventListener("change", (e) => readImage(e.target, "sig"));
+  $("sBizLogo").addEventListener("change", (e) => readImage(e.target, "bizLogo"));
+  $("btnNoBiz").addEventListener("click", () => { S.bizLogo = ""; $("sBizLogo").value = ""; save(); refresh(); });
+  $("btnNoLogo").addEventListener("click", () => { S.logo = ""; $("sLogo").value = ""; save(); refresh(); });
+  $("btnNoSig").addEventListener("click", () => { S.sig = ""; $("sSig").value = ""; save(); refresh(); });
+
+  ["cNum", "cDate", "cPayee", "cAmt", "cMemo", "cPayeeAddr", "cNotes"].forEach((id) => {
+    $(id).addEventListener("input", () => {
+      if (id === "cNum") $("cNum").dataset.touched = "1";
+      state.draft = currentCheck(); state.draft.amtRaw = $("cAmt").value; save(); refresh();
+    });
+  });
+  $("cAmt").addEventListener("blur", () => { const c = parseAmount($("cAmt").value); if (c) $("cAmt").value = money(c).replace(/,/g, ""); });
+
+  /* ---------------- preview ---------------- */
+  function refresh() {
+    const c = currentCheck();
+    $("cWords").textContent = c.cents ? amountWords(c.cents) + " dollars" : ($("cAmt").value ? "Enter an amount like 250 or 1250.75" : "Amount in words appears here");
+    $("setupNotice").hidden = settingsReady();
+    const s = effectiveSettings();
+    const box = $("scaleBox");
+    box.innerHTML = sheetHtml(c, s);
+    const sheet = box.firstChild;
+    if (!$("pGuides").checked) sheet.querySelectorAll(".perf").forEach((p) => p.remove());
+    const w = box.clientWidth || 600, scale = w / 816;
+    sheet.style.transform = "scale(" + scale + ")";
+    box.style.height = Math.round(1056 * scale) + "px";
+  }
+  $("pGuides").addEventListener("change", refresh);
+  window.addEventListener("resize", refresh);
+
+  /* ---------------- validation, print, register ---------------- */
+  function validateCheck(c) {
+    if (!settingsReady()) return "Finish Settings first: name, a valid routing number and account number.";
+    if (!/^\d+$/.test(c.num)) return "Enter a check number (digits only).";
+    if (!c.date) return "Pick a date.";
+    if (!c.payee) return "Enter who the check is payable to.";
+    if (!c.cents) return "Enter an amount greater than zero, like 250 or 1250.75.";
+    return "";
+  }
+  function loadScript(src) {
+    return new Promise((ok, bad) => { const el = document.createElement("script"); el.src = src; el.onload = ok; el.onerror = () => bad(new Error("load")); document.head.appendChild(el); });
+  }
+  let pdfLibs = null;
+  function getPdfLibs() {
+    if (!pdfLibs) pdfLibs = Promise.all([
+      window.html2canvas ? 0 : loadScript("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"),
+      window.jspdf ? 0 : loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"),
+    ]).catch((e) => { pdfLibs = null; throw e; });
+    return pdfLibs;
+  }
+  let downloadsApi;
+  async function getDownloads() {
+    if (downloadsApi === undefined) {
+      try { downloadsApi = (window.claude && window.claude.use) ? await window.claude.use("downloads") : null; } catch (e) { downloadsApi = null; }
+    }
+    return downloadsApi;
+  }
+  async function saveFile(name, data, msgId) {
+    const dl = await getDownloads();
+    if (!dl) { flash(msgId, "Saving files isn't available in this view. Use the downloaded app instead.", "warn"); return false; }
+    try { await dl.save({ filename: name, data }); return true; }
+    catch (e) {
+      if (e && e.code === "declined") flash(msgId, "Save cancelled.", "warn");
+      else if (e && e.code === "rate_limited") flash(msgId, "A save is already waiting for your OK. Answer that one first.", "warn");
+      else flash(msgId, "Couldn't save the file here. Use the downloaded app instead.", "bad");
+      return false;
+    }
+  }
+  // Inside the Claude viewer the page can't print, so it builds a Letter-size PDF to print from the phone or computer.
+  async function makePdf(html, name, msgId) {
+    flash(msgId, "Making the PDF…", "");
+    const host = document.createElement("div");
+    host.className = "pdfHost"; host.innerHTML = html;
+    document.body.appendChild(host);
+    try {
+      await getPdfLibs();
+      const imgs = [...host.querySelectorAll("img")];
+      await Promise.all(imgs.map((im) => im.complete ? 0 : new Promise((r) => { im.onload = im.onerror = r; })));
+      const sheet = host.querySelector(".sheet");
+      const canvas = await window.html2canvas(sheet, { scale: 300 / 96, backgroundColor: "#ffffff", logging: false, useCORS: true });
+      const pdf = new window.jspdf.jsPDF({ orientation: "portrait", unit: "in", format: "letter" });
+      pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, 8.5, 11, undefined, "FAST");
+      const ok = await saveFile(name, pdf.output("blob"), msgId);
+      if (ok) flash(msgId, "PDF saved. Open it and print at 100% (Actual size), Letter paper, no scaling or Fit to page.", "good");
+      return ok;
+    } catch (e) {
+      flash(msgId, "Couldn't make the PDF. Check your internet connection and try again.", "bad");
+      return false;
+    } finally { host.remove(); }
+  }
+  function doPrint(html, name, msgId) {
+    if (IN_FRAME) { makePdf(html, name, msgId); return "pdf"; }
+    $("printRoot").innerHTML = html;
+    setTimeout(() => window.print(), 50);
+    return true;
+  }
+  let editingId = null;
+  function setEditing(id) {
+    editingId = id;
+    const r = id && state.register.find((x) => x.id === id);
+    $("editBanner").hidden = !r;
+    if (r) $("editBanner").innerHTML = "<b>Editing check #" + esc(r.num) + "</b> (" + esc(r.status) + "). Change anything, then click Save changes, or Reprint check to print it again. Clear cancels without changing anything.";
+    $("writeTitle").textContent = r ? "Edit check" : "New check";
+    $("btnSave").textContent = r ? "Save changes" : "Save to register";
+    $("btnPrint").textContent = r ? "Reprint check" : "Print check";
+  }
+  function record(status) {
+    const c = currentCheck();
+    const err = validateCheck(c);
+    if (err) { flash("cMsg", err, "bad"); return null; }
+    if (editingId) {
+      const r = state.register.find((x) => x.id === editingId);
+      if (r) {
+        const clash = reg().find((x) => x.id !== r.id && x.num === c.num && x.status !== "void");
+        if (clash) { flash("cMsg", "Check #" + c.num + " is already used by another check (" + clash.payee + "). Pick a different number.", "bad"); return null; }
+        Object.assign(r, c, { status: status === "printed" ? "printed" : r.status, editedAt: new Date().toISOString() });
+        const n = parseInt(c.num, 10);
+        if (n >= (parseInt(S.next, 10) || 0)) S.next = n + 1;
+        save(); setEditing(null);
+        return r;
+      }
+      setEditing(null);
+    }
+    const existing = reg().find((r) => r.num === c.num && r.status !== "void");
+    if (existing && !$("btnPrint").dataset.confirmDup) {
+      $("btnPrint").dataset.confirmDup = "1"; $("btnSave").dataset.confirmDup = "1";
+      flash("cMsg", "Check #" + c.num + " is already in the register (" + existing.payee + "). Click again to replace that entry.", "warn");
+      return null;
+    }
+    delete $("btnPrint").dataset.confirmDup; delete $("btnSave").dataset.confirmDup;
+    state.register = state.register.filter((r) => !(r.accountId === acct().id && r.num === c.num && r.status !== "void"));
+    const entry = Object.assign({ id: newId(), accountId: acct().id, status, savedAt: new Date().toISOString() }, c);
+    state.register.push(entry);
+    const n = parseInt(c.num, 10);
+    if (n >= (parseInt(S.next, 10) || 0)) S.next = n + 1;
+    save();
+    return entry;
+  }
+  function startNextCheck(keepMsg) {
+    $("cNum").value = S.next; delete $("cNum").dataset.touched;
+    ["cPayee", "cAmt", "cMemo", "cPayeeAddr", "cNotes"].forEach((id) => { $(id).value = ""; });
+    $("cDate").value = todayIso();
+    state.draft = null; save();
+    $("sNext").value = S.next;
+    if (!keepMsg) flash("cMsg", "", "");
+    lists(); refresh(); renderRegister();
+  }
+  $("btnPrint").addEventListener("click", () => {
+    const c = currentCheck();
+    const err = validateCheck(c);
+    if (err) { flash("cMsg", err, "bad"); return; }
+    const html = sheetHtml(c, S);
+    const e = record("printed");
+    if (!e) return;
+    const ok = doPrint(html, "check-" + e.num + ".pdf", "cMsg");
+    if (ok === true) flash("cMsg", "Check #" + e.num + " sent to the printer and saved in the register.", "good");
+    startNextCheck(true);
+  });
+  $("btnSave").addEventListener("click", () => {
+    const wasEditing = !!editingId;
+    const e = record("saved");
+    if (e) { flash("cMsg", wasEditing ? "Changes to check #" + e.num + " saved." : "Check #" + e.num + " saved to the register (not printed).", "good"); startNextCheck(true); }
+  });
+  $("btnClear").addEventListener("click", () => { setEditing(null); startNextCheck(false); });
+  $("btnTest").addEventListener("click", () => {
+    const s = effectiveSettings();
+    const sample = { num: String(S.next || 1001), date: todayIso(), payee: "Alignment Test Payee", cents: 123456, memo: "Alignment test", notes: "Stub details print here." };
+    if (doPrint(sheetHtml(sample, s, { test: true }), "alignment-test.pdf", "sMsg") === true) flash("sMsg", "Alignment test sent to the printer. Use plain paper.", "good");
+  });
+  $("btnSample").addEventListener("click", () => {
+    const c = currentCheck();
+    const s = effectiveSettings();
+    const sample = Object.assign({}, c, { num: c.num || "0000", payee: c.payee || "VOID SAMPLE", cents: c.cents || 100, memo: c.memo || "SAMPLE - NOT NEGOTIABLE" });
+    if (doPrint(sheetHtml(sample, s, { test: true }), "sample-check.pdf", "sMsg") === true) flash("sMsg", "Sample sent to the printer. Use plain paper.", "good");
+  });
+
+  function lists() {
+    const payees = [...new Set(reg().map((r) => r.payee).filter(Boolean))].sort();
+    const saved = String(S.memos || "").split("\n").map((m) => m.trim()).filter(Boolean);
+    const memos = [...new Set(saved.concat(reg().map((r) => r.memo).filter(Boolean).sort()))];
+    $("payeeList").innerHTML = payees.map((p) => '<option value="' + esc(p) + '">').join("");
+    $("memoList").innerHTML = memos.map((p) => '<option value="' + esc(p) + '">').join("");
+  }
+  $("cPayee").addEventListener("change", () => {
+    // Fill memo and address from the last check to the same payee, if those are empty.
+    const p = $("cPayee").value.trim(); if (!p) return;
+    const last = [...reg()].reverse().find((r) => r.payee === p);
+    if (!last) return;
+    if (!$("cMemo").value && last.memo) $("cMemo").value = last.memo;
+    if (!$("cPayeeAddr").value && last.payeeAddr) $("cPayeeAddr").value = last.payeeAddr;
+    refresh();
+  });
+
+  function renderRegister() {
+    $("regTitle").textContent = "Check register · " + acctName(acct());
+    const q = $("regSearch").value.trim().toLowerCase();
+    const rows = [...reg()].sort((a, b) => (parseInt(b.num, 10) || 0) - (parseInt(a.num, 10) || 0))
+      .filter((r) => !q || [r.num, r.payee, r.memo].join(" ").toLowerCase().includes(q));
+    const live = reg().filter((r) => r.status !== "void");
+    const total = live.reduce((t, r) => t + (r.cents || 0), 0);
+    const ym = todayIso().slice(0, 7);
+    const month = live.filter((r) => (r.date || "").slice(0, 7) === ym).reduce((t, r) => t + (r.cents || 0), 0);
+    $("regStats").innerHTML = '<div><b class="num">' + live.length + "</b>checks written</div>" +
+      '<div><b class="num">$' + money(month) + "</b>this month</div>" +
+      '<div><b class="num">$' + money(total) + "</b>all time</div>" +
+      '<div><b class="num">' + esc(S.next) + "</b>next check #</div>";
+    if (!rows.length) { $("regTable").innerHTML = '<tr><td class="hint">' + (reg().length ? "No checks match that search." : "No checks yet. Printed and saved checks show up here.") + "</td></tr>"; return; }
+    $("regTable").innerHTML = "<thead><tr><th>#</th><th>Date</th><th>Payee</th><th class=\"amt\">Amount</th><th>Memo</th><th>Status</th><th></th></tr></thead><tbody>" +
+      rows.map((r) => "<tr><td class=\"num\">" + esc(r.num) + "</td><td class=\"num\">" + esc(fmtDate(r.date)) + "</td><td class=\"wrap\">" + esc(r.payee) + "</td><td class=\"amt num\">" + (r.status === "void" ? "<s>" : "") + "$" + money(r.cents || 0) + (r.status === "void" ? "</s>" : "") + "</td><td class=\"wrap\">" + esc(r.memo) +
+        "</td><td><span class=\"pill " + esc(r.status) + "\">" + esc(r.status) + "</span></td><td>" +
+        '<button class="linkbtn" data-act="open" data-id="' + esc(r.id) + '">Edit</button>' +
+        (r.status !== "void" ? '<button class="linkbtn" data-act="void" data-id="' + esc(r.id) + '">Void</button>' : '<button class="linkbtn" data-act="del" data-id="' + esc(r.id) + '">Delete</button>') +
+        "</td></tr>").join("") + "</tbody>";
+  }
+  $("regSearch").addEventListener("input", renderRegister);
+  let pendingDelete = null;
+  $("regTable").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-act]"); if (!b) return;
+    const r = state.register.find((x) => x.id === b.dataset.id); if (!r) return;
+    if (b.dataset.act === "open") {
+      setEditing(r.id);
+      $("cNum").value = r.num; $("cNum").dataset.touched = "1"; $("cDate").value = r.date; $("cPayee").value = r.payee;
+      $("cAmt").value = money(r.cents).replace(/,/g, ""); $("cMemo").value = r.memo || ""; $("cPayeeAddr").value = r.payeeAddr || ""; $("cNotes").value = r.notes || "";
+      go("write"); refresh(); flash("cMsg", "", "");
+    } else if (b.dataset.act === "void") {
+      r.status = "void"; save(); renderRegister(); flash("regMsg", "Check #" + r.num + " marked void.", "good");
+    } else if (b.dataset.act === "del") {
+      if (pendingDelete !== r.id) { pendingDelete = r.id; flash("regMsg", "Click Delete again to remove check #" + r.num + " for good.", "warn"); return; }
+      state.register = state.register.filter((x) => x.id !== r.id); pendingDelete = null; save(); renderRegister(); flash("regMsg", "Deleted.", "good");
+    }
+  });
+  function download(name, text, type) {
+    if (IN_FRAME) { saveFile(name, text, "regMsg"); return; }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([text], { type }));
+    a.download = name; document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+  $("btnCsv").addEventListener("click", () => {
+    const head = ["Check #", "Date", "Payee", "Amount", "Memo", "Status", "Details"];
+    const q = (v) => '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"';
+    const lines = [head.map(q).join(",")].concat([...reg()].sort((a, b) => (parseInt(a.num, 10) || 0) - (parseInt(b.num, 10) || 0)).map((r) => [r.num, fmtDate(r.date), r.payee, (r.cents / 100).toFixed(2), r.memo, r.status, r.notes].map(q).join(",")));
+    download("check-register-" + acctName(acct()).replace(/[^\w-]+/g, "-") + "-" + todayIso() + ".csv", lines.join("\r\n"), "text/csv");
+  });
+  $("btnBackup").addEventListener("click", () => download("check-writer-backup-" + todayIso() + ".json", JSON.stringify({ app: "check-writer", version: 2, accounts: state.accounts, global: state.global, activeId: state.activeId, register: state.register }, null, 2), "application/json"));
+  $("fileRestore").addEventListener("change", (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    const fr = new FileReader();
+    fr.onload = () => {
+      try {
+        const d = JSON.parse(fr.result);
+        if (d.app !== "check-writer" || !Array.isArray(d.register)) throw new Error("not a backup");
+        state = normalize(d);
+        save(); fillSettings(); startNextCheck(); renderAccounts(); flash("regMsg", "Restored " + state.accounts.length + " account(s) and " + state.register.length + " checks.", "good");
+      } catch (err) { flash("regMsg", "That file isn't a Check Writer backup.", "bad"); }
+      e.target.value = "";
+    };
+    fr.readAsText(f);
+  });
+
+  /* ---------------- alignment arrows ---------------- */
+  function fmtShift(x, y) {
+    const r = (v, pos, neg) => (Math.abs(v) < 0.0005 ? "" : Math.abs(v).toFixed(3) + '" ' + (v > 0 ? pos : neg));
+    const parts = [r(x, "right", "left"), r(y, "down", "up")].filter(Boolean);
+    return parts.length ? parts.join(", ") : "no shift";
+  }
+  function showShifts() {
+    $("roMicr").textContent = fmtShift(+S.micrX || 0, +S.micrY || 0);
+    $("roAll").textContent = fmtShift(+S.offX || 0, +S.offY || 0);
+    ["offX", "offY", "micrX", "micrY"].forEach((k) => { const id = { offX: "sOffX", offY: "sOffY", micrX: "sMicrX", micrY: "sMicrY" }[k]; if (document.activeElement !== $(id)) $(id).value = +(+S[k] || 0).toFixed(3); });
+  }
+  document.querySelectorAll(".pad button").forEach((b) => b.addEventListener("click", () => {
+    const kx = b.dataset.n === "micr" ? "micrX" : "offX", ky = b.dataset.n === "micr" ? "micrY" : "offY";
+    if (b.dataset.reset) { S[kx] = 0; S[ky] = 0; }
+    else {
+      const step = parseFloat($("nudgeStep").value) || 0.002;
+      S[kx] = +((+S[kx] || 0) + step * +b.dataset.dx).toFixed(3);
+      S[ky] = +((+S[ky] || 0) + step * +b.dataset.dy).toFixed(3);
+    }
+    save(); showShifts(); refresh();
+  }));
+
+  /* ---------------- accounts ---------------- */
+  function renderAccounts(keepFields) {
+    $("acctSelect").innerHTML = state.accounts.map((a) => {
+      const tail = a.account ? " ····" + String(a.account).slice(-4) : "";
+      return '<option value="' + esc(a.id) + '"' + (a.id === state.activeId ? " selected" : "") + ">" + esc(acctName(a) + tail) + "</option>";
+    }).join("");
+    $("btnDelAcct").disabled = state.accounts.length < 2;
+    if (!keepFields) fillSettings();
+  }
+  function switchTo(id, msg) {
+    state.activeId = id; state.draft = null; save(); setEditing(null);
+    renderAccounts(); startNextCheck(true); renderRegister();
+    flash("acctMsg", msg || "", msg ? "good" : "");
+  }
+  $("acctSelect").addEventListener("change", (e) => switchTo(e.target.value, "Switched to " + acctName(state.accounts.find((a) => a.id === e.target.value)) + "."));
+  $("btnAddAcct").addEventListener("click", () => {
+    const a = newAccount(); state.accounts.push(a);
+    switchTo(a.id, "New account added. Fill in its details below.");
+    go("settings"); $("sLabel").focus();
+  });
+  $("btnCopyAcct").addEventListener("click", () => {
+    const src = acct();
+    const a = newAccount({ label: acctName(src) + " (copy)", name: src.name, addr: src.addr, bank: src.bank, bankCity: src.bankCity, routing: src.routing, fraction: src.fraction, logo: src.logo, bizLogo: src.bizLogo, memos: src.memos, hideBankName: src.hideBankName, sig: src.sig, micrStyle: src.micrStyle });
+    state.accounts.push(a);
+    switchTo(a.id, "Copied the name, address and bank. Enter the new account number and starting check number.");
+    go("settings"); $("sAccount").focus();
+  });
+  let pendingAcctDelete = null;
+  $("btnDelAcct").addEventListener("click", () => {
+    if (state.accounts.length < 2) return;
+    const a = acct(), n = reg().length;
+    if (pendingAcctDelete !== a.id) {
+      pendingAcctDelete = a.id;
+      flash("acctMsg", "Click Delete again to remove " + acctName(a) + (n ? " and its " + n + " register entries" : "") + ". Back up first if you might need them.", "warn");
+      return;
+    }
+    pendingAcctDelete = null;
+    state.accounts = state.accounts.filter((x) => x.id !== a.id);
+    state.register = state.register.filter((r) => r.accountId !== a.id);
+    switchTo(state.accounts[0].id, acctName(a) + " deleted.");
+  });
+
+  /* ---------------- online sync ----------------
+     When this page is served by server.mjs (checkwriter.theproductgenerator.com),
+     accounts and checks live on the server behind an access code, so the phone
+     and the PC see the same register. Opened as a file, it stays local only. */
+  const CODE_KEY = "checkwriter.code";
+  const sync = { on: false, rev: 0, timer: null, pushing: false, again: false };
+  function syncText(t) { $("syncText").textContent = t; }
+  function code() { try { return localStorage.getItem(CODE_KEY) || ""; } catch (e) { return ""; } }
+  async function api(method, body) {
+    const r = await fetch("api/state", { method, headers: { "Content-Type": "application/json", "X-App-Code": code() }, body: body ? JSON.stringify(body) : undefined, cache: "no-store" });
+    const j = await r.json().catch(() => ({}));
+    return { status: r.status, j };
+  }
+  function showLock(msg) {
+    $("lock").hidden = false; $("lockErr").textContent = msg || ""; $("lockCode").value = ""; $("lockCode").focus();
+  }
+  function applyServer(data, rev) {
+    sync.rev = rev;
+    const keepDraft = state.draft;
+    state = normalize(data);
+    if (keepDraft) state.draft = keepDraft;
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+    setEditing(null); renderAccounts(); fillSettings(); showShifts(); lists();
+    if (!$("cNum").dataset.touched) $("cNum").value = S.next;
+    renderRegister(); refresh();
+  }
+  function hasRealData() { return state.register.length > 0 || state.accounts.some((a) => a.routing && a.routing !== EXAMPLE.routing); }
+  async function pull() {
+    if (!sync.on) return;
+    try {
+      const { status, j } = await api("GET");
+      if (status === 401 || status === 429) return showLock(j.error);
+      if (status !== 200) { syncText("Not synced: " + (j.error || "server error")); return; }
+      $("lock").hidden = true;
+      if (!j.data) {
+        sync.rev = j.rev || 0;
+        if (hasRealData()) { syncText("Uploading…"); push(); } else syncText("Synced ✓ (nothing saved yet)");
+        return;
+      }
+      if (j.rev !== sync.rev) applyServer(j.data, j.rev);
+      syncText("Synced ✓");
+    } catch (e) { syncText("Offline: changes stay on this device until it reconnects"); }
+  }
+  function queuePush() {
+    if (!sync.on || !code()) return;
+    syncText("Saving…");
+    clearTimeout(sync.timer); sync.timer = setTimeout(push, 700);
+  }
+  function merge(server) {
+    // Both devices changed something: keep every check from both, newest edit wins.
+    const byId = new Map();
+    const stamp = (r) => Date.parse(r.editedAt || r.savedAt || 0) || 0;
+    (server.register || []).concat(state.register).forEach((r) => { const o = byId.get(r.id); if (!o || stamp(r) >= stamp(o)) byId.set(r.id, r); });
+    const accts = state.accounts.slice();
+    (server.accounts || []).forEach((a) => { if (!accts.some((x) => x.id === a.id)) accts.push(a); });
+    return Object.assign({}, state, { accounts: accts, register: [...byId.values()] });
+  }
+  async function push() {
+    if (sync.pushing) { sync.again = true; return; }
+    sync.pushing = true;
+    try {
+      let { status, j } = await api("PUT", { baseRev: sync.rev, data: state });
+      if (status === 409) {
+        const merged = merge(j.data || {});
+        ({ status, j } = await api("PUT", { baseRev: j.rev, data: merged }));
+        if (status === 200) applyServer(merged, j.rev);
+      }
+      if (status === 401) { showLock(j.error); return; }
+      if (status !== 200) { syncText("Not saved online: " + (j.error || "server error")); return; }
+      sync.rev = j.rev; syncText("Synced ✓");
+    } catch (e) { syncText("Offline: changes stay on this device until it reconnects"); }
+    finally {
+      sync.pushing = false;
+      if (sync.again) { sync.again = false; push(); }
+    }
+  }
+  async function startSync() {
+    if (IN_FRAME || !/^https?:$/.test(location.protocol)) return;
+    try {
+      const r = await fetch("api/ping", { cache: "no-store" });
+      const j = await r.json();
+      if (j.app !== "check-writer") return;
+    } catch (e) { return; }
+    sync.on = true; $("syncState").hidden = false; syncText("Connecting…");
+    if (!code()) return showLock();
+    pull();
+  }
+  $("lockForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    try { localStorage.setItem(CODE_KEY, $("lockCode").value.trim()); } catch (err) {}
+    $("lockErr").textContent = "Checking…"; pull();
+  });
+  $("btnLock").addEventListener("click", () => {
+    // Locking also clears this device's copy, so nothing is left on a phone that gets lost.
+    try { localStorage.removeItem(CODE_KEY); localStorage.removeItem(KEY); } catch (e) {}
+    location.reload();
+  });
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") pull(); });
+
+  /* ---------------- tabs ---------------- */
+  function go(tab) {
+    document.querySelectorAll("[data-tab]").forEach((el) => el.classList.toggle("on", el.dataset.tab === tab));
+    document.querySelectorAll("[data-go]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.go === tab)));
+    if (tab === "register") renderRegister();
+    refresh();
+  }
+  document.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => go(b.dataset.go)));
+  window.addEventListener("afterprint", () => { $("printRoot").innerHTML = ""; });
+
+  /* ---------------- boot ---------------- */
+  renderAccounts();
+  const d = state.draft;
+  $("cNum").value = d && d.num ? d.num : S.next;
+  if (d && d.num) $("cNum").dataset.touched = "1";
+  $("cDate").value = (d && d.date) || todayIso();
+  if (d) { $("cPayee").value = d.payee || ""; $("cAmt").value = d.amtRaw || ""; $("cMemo").value = d.memo || ""; $("cPayeeAddr").value = d.payeeAddr || ""; $("cNotes").value = d.notes || ""; }
+  else if (!state.register.length) { $("cPayee").value = "Example Payee"; $("cAmt").value = "250.00"; $("cMemo").value = "Example memo"; }
+  if (IN_FRAME) {
+    $("printHint").textContent = "Here, Print check saves a PDF. Open it and print at 100% (Actual size) on Letter paper.";
+    $("btnPrint").dataset.pdf = "1";
+  }
+  lists(); refresh();
+  if (!settingsReady()) go("settings");
+  startSync();
+  // expose pure helpers for testing
+  window.__checkWriter = { amountWords, abaValid, parseAmount };
+})();
+</script>
+</body>
+</html>
