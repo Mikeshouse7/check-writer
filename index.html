@@ -249,6 +249,13 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
               <option value="font">Use a MICR font installed on this computer</option>
             </select>
           </label>
+          <label class="f">Bottom line size
+            <select id="sMicrScale">
+              <option value="1">Bank standard (0.117" tall, recommended)</option>
+              <option value="1.15">A little larger (0.135" tall)</option>
+              <option value="1.28">Like my old checks (0.150" tall)</option>
+            </select>
+          </label>
           <label class="chk"><input type="checkbox" id="sSkipT"> Don't print the first ⑆ symbol (leave it off and use the light one on the paper)</label>
           <div class="row3" id="micrFontRow">
             <label class="f">Font name<input id="sMicrFontName" placeholder="MICR E13B"></label>
@@ -349,7 +356,7 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
      register: every check, tagged with the account it was drawn on. */
   const ACCOUNT_KEYS = ["bizLogo", "memos", "hideBankName", "label", "name", "addr", "bank", "bankCity", "routing", "account", "fraction", "next", "logo", "sig", "micrStyle"];
   const ACCOUNT_DEFAULTS = { bizLogo: "", memos: "", hideBankName: false, label: "", name: "", addr: "", bank: "", bankCity: "", routing: "", account: "", fraction: "", next: 1001, logo: "", sig: "", micrStyle: "personal" };
-  const GLOBAL_DEFAULTS = { micrFont: "builtin", micrFontName: "MICR E13B", micrSize: 12, micrKeys: "A,C", lines: true, stubs: true, stubCount: "1", stubStyle: "paidto", stars: false, skipFirstT: false, paper: "qb", offX: 0, offY: 0, micrX: -0.002, micrY: -0.002 };
+  const GLOBAL_DEFAULTS = { micrFont: "builtin", micrFontName: "MICR E13B", micrSize: 12, micrKeys: "A,C", lines: true, stubs: true, stubCount: "1", stubStyle: "paidto", stars: false, skipFirstT: false, micrScale: "1", paper: "qb", offX: 0, offY: 0, micrX: -0.002, micrY: -0.002 };
   const EXAMPLE = { name: "Your Name", addr: "555-123-4567\n123 Main Street\nAnytown, ST 12345", bank: "Your Bank", bankCity: "", routing: "011000015", account: "000123456789", fraction: "" };
   const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   function newAccount(extra) { return Object.assign({ id: newId() }, ACCOUNT_DEFAULTS, extra || {}); }
@@ -455,15 +462,19 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
      Units are reference pixels: glyphs are 37 px tall = 0.117 in, characters sit on a 0.125 in pitch. */
   const G = {"1":[15,[[1,0,5,1],[0,1,7,5],[1,6,6,1],[3,7,4,12],[3,19,5,1],[0,20,14,1],[0,21,15,14],[1,35,12,1]]],"2":[15,[[1,0,13,1],[0,1,15,3],[1,4,14,1],[11,5,4,11],[0,16,15,4],[0,20,4,11],[0,31,5,1],[0,32,15,3],[1,35,13,1]]],"3":[19,[[1,0,13,1],[0,1,15,3],[1,4,14,1],[11,5,4,2],[12,7,3,7],[11,14,4,2],[1,16,14,1],[0,17,16,1],[0,18,19,2],[11,20,8,2],[12,22,7,8],[11,30,8,1],[10,31,9,1],[0,32,19,3],[1,35,17,1]]],"4":[23,[[2,0,5,1],[1,1,7,1],[16,20,7,2],[0,2,8,21],[0,23,9,1],[15,22,8,2],[0,24,23,3],[1,27,22,1],[15,28,8,1],[16,29,7,6],[17,35,5,1]]],"5":[20,[[1,0,17,1],[1,1,18,1],[0,2,20,2],[0,4,19,1],[0,5,5,1],[0,6,4,9],[0,15,5,1],[0,16,19,1],[0,17,20,2],[1,19,19,1],[15,20,5,1],[16,21,4,9],[15,30,5,1],[14,31,6,1],[0,32,20,2],[0,34,19,1],[2,35,16,1]]],"6":[24,[[2,0,13,1],[1,1,15,4],[1,5,4,2],[12,5,4,5],[13,10,2,1],[1,7,3,11],[1,18,4,2],[1,20,22,1],[1,21,23,3],[19,24,5,1],[1,24,4,2],[1,26,3,4],[1,30,4,1],[20,25,4,6],[1,31,5,1],[18,31,6,1],[1,32,23,1],[0,33,24,1],[1,34,23,1],[2,35,20,1]]],"7":[19,[[1,0,17,1],[0,1,19,4],[14,5,5,1],[0,5,4,6],[0,11,3,1],[15,6,4,7],[14,13,5,1],[13,14,6,1],[10,15,9,1],[8,16,10,1],[7,17,9,1],[7,18,7,1],[7,19,5,1],[7,20,4,15]]],"8":[27,[[5,0,17,1],[4,1,19,4],[4,5,4,11],[19,5,4,11],[4,16,19,1],[3,17,21,1],[1,18,25,1],[0,19,27,1],[0,20,9,1],[18,20,9,1],[0,21,8,10],[19,21,8,10],[0,31,9,1],[18,31,9,1],[0,32,27,3],[2,35,24,1]]],"9":[23,[[1,0,21,1],[0,1,23,4],[0,5,4,10],[0,15,5,1],[19,5,4,11],[0,16,23,4],[14,20,9,1],[15,21,8,13],[16,34,7,1],[17,35,5,1]]],"0":[28,[[7,0,14,1],[5,1,18,1],[3,2,22,1],[2,3,24,1],[1,4,25,1],[1,5,5,1],[22,5,5,1],[1,6,4,1],[0,7,5,1],[23,6,4,2],[23,8,5,20],[0,8,4,21],[0,29,5,1],[23,28,4,2],[1,30,5,1],[22,30,5,1],[1,31,6,1],[20,31,7,1],[2,32,24,1],[3,33,22,1],[4,34,19,1],[7,35,14,1]]],"T":[28,[[17,0,10,1],[16,1,11,1],[1,7,7,1],[16,2,12,9],[16,11,11,1],[17,24,10,1],[0,8,8,20],[1,28,7,2],[16,25,12,10],[17,35,9,1]]],"U":[27,[[0,7,3,1],[8,7,3,1],[15,3,12,14],[15,17,11,1],[0,8,4,21],[7,8,4,21],[1,29,2,1],[8,29,2,1]]],"A":[26,[[20,0,5,1],[12,9,2,1],[19,1,7,15],[11,10,4,16],[12,26,2,1],[0,20,7,15]]],"D":[28,[[23,11,4,1],[23,12,5,1],[11,11,8,14],[23,13,4,12],[0,11,7,15],[12,25,7,1],[23,25,3,1]]]};
   const PITCH = 0.125, GH = 37, PX_PER_IN = GH / 0.117, CELL = PITCH * PX_PER_IN, MICR_H = 0.117;
-  function micrSvg(str) {
-    const n = str.length;
+  function micrScale(s) { const k = parseFloat(s && s.micrScale); return k >= 1 && k <= 1.4 ? k : 1; }
+  // k > 1 draws taller, wider characters but keeps the 1/8" spacing, so every
+  // character still lands in its bank position.
+  function micrSvg(str, k) {
+    k = k || 1;
+    const n = str.length, cell = CELL / k;
     let rects = "";
     for (let i = 0; i < n; i++) {
       const g = G[str[i]]; if (!g) continue;
-      const ox = i * CELL + (CELL - g[0]) / 2;
+      const ox = i * cell + (cell - g[0]) / 2;
       g[1].forEach((r) => { rects += '<rect x="' + (ox + r[0]).toFixed(2) + '" y="' + r[1] + '" width="' + r[2] + '" height="' + r[3] + '"/>'; });
     }
-    return '<svg xmlns="http://www.w3.org/2000/svg" width="' + (n * PITCH) + 'in" height="' + MICR_H + 'in" viewBox="0 0 ' + (n * CELL).toFixed(2) + " " + GH + '" fill="#000" shape-rendering="crispEdges">' + rects + "</svg>";
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="' + (n * PITCH) + 'in" height="' + (MICR_H * k) + 'in" viewBox="0 0 ' + (n * cell).toFixed(2) + " " + GH + '" fill="#000" shape-rendering="crispEdges">' + rects + "</svg>";
   }
   // Place a MICR string so that its LAST character sits in ANSI X9 position `pos`
   // (position 1 is 5/16" from the check's right edge, counting leftward).
@@ -472,7 +483,7 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
     if (!str) return "";
     const rightEdge = CHECK_RIGHT - 0.3125 - (endPos - 1) * PITCH;
     const left = rightEdge - str.length * PITCH + (+s.micrX || 0);
-    const top = CHAR_BOTTOM - MICR_H + (+s.micrY || 0);
+    const top = CHAR_BOTTOM - MICR_H * micrScale(s) + (+s.micrY || 0);
     if (s.micrFont === "font") {
       const keys = (s.micrKeys || "A,C").split(",").map((k) => k.trim());
       const map = { T: keys[0] || "A", U: keys[1] || "C", A: "B", D: "D" };
@@ -483,7 +494,7 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
       }
       return '<div class="micr" style="left:' + left + "in;top:" + (CHAR_BOTTOM - 0.25 + (+s.micrY || 0)) + "in;width:" + (str.length * PITCH) + 'in;height:0.25in;font-family:\'' + esc(s.micrFontName) + "';font-size:" + (+s.micrSize || 12) + 'pt;line-height:1">' + spans + "</div>";
     }
-    return '<div class="micr" style="left:' + left + "in;top:" + top + 'in">' + micrSvg(str) + "</div>";
+    return '<div class="micr" style="left:' + left + "in;top:" + top + 'in">' + micrSvg(str, micrScale(s)) + "</div>";
   }
   function micrLine(s, checkNo) {
     const routing = (s.routing || "").replace(/\D/g, "");
@@ -622,7 +633,7 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
       for (let i = 1; i < 11; i++) inner += '<div style="position:absolute;top:' + i + 'in;left:0;width:0.15in;border-top:1px solid #c33"></div>';
       // box around ANSI position 43, where the paper's pre-printed ⑆ symbol should sit
       const p43 = CHECK_RIGHT - 0.3125 - 43 * PITCH + (+s.micrX || 0);
-      inner += '<div style="position:absolute;left:' + (p43 - 0.03) + 'in;top:' + (CHAR_BOTTOM - MICR_H - 0.04 + (+s.micrY || 0)) + 'in;width:' + (PITCH + 0.06) + 'in;height:' + (MICR_H + 0.08) + 'in;border:1px solid #c33"></div>';
+      inner += '<div style="position:absolute;left:' + (p43 - 0.03) + 'in;top:' + (CHAR_BOTTOM - MICR_H * micrScale(s) - 0.04 + (+s.micrY || 0)) + 'in;width:' + (PITCH + 0.06) + 'in;height:' + (MICR_H * micrScale(s) + 0.08) + 'in;border:1px solid #c33"></div>';
       inner += A(p43 - 0.03, CHAR_BOTTOM + 0.07 + (+s.micrY || 0), "↑ this ⑆ should print exactly on top of the light ⑆ on your check paper", "font-size:7pt;color:#c33");
     } else {
       perfs(s).forEach((y) => { inner += '<div class="perf guide-only" style="top:' + y + 'in"></div>'; });
@@ -654,7 +665,7 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
   }
   function settingsReady() { const s = S; return !!(s.name && abaValid(s.routing) && s.account); }
 
-  const SETTING_FIELDS = { sLabel: "label", sName: "name", sAddr: "addr", sBank: "bank", sBankCity: "bankCity", sRouting: "routing", sAccount: "account", sFraction: "fraction", sNext: "next", sMicrStyle: "micrStyle", sPaper: "paper", sStubCount: "stubCount", sStubStyle: "stubStyle", sMemos: "memos", sMicrFont: "micrFont", sMicrFontName: "micrFontName", sMicrSize: "micrSize", sMicrKeys: "micrKeys", sOffX: "offX", sOffY: "offY", sMicrX: "micrX", sMicrY: "micrY" };
+  const SETTING_FIELDS = { sLabel: "label", sName: "name", sAddr: "addr", sBank: "bank", sBankCity: "bankCity", sRouting: "routing", sAccount: "account", sFraction: "fraction", sNext: "next", sMicrStyle: "micrStyle", sMicrScale: "micrScale", sPaper: "paper", sStubCount: "stubCount", sStubStyle: "stubStyle", sMemos: "memos", sMicrFont: "micrFont", sMicrFontName: "micrFontName", sMicrSize: "micrSize", sMicrKeys: "micrKeys", sOffX: "offX", sOffY: "offY", sMicrX: "micrX", sMicrY: "micrY" };
   const SETTING_CHECKS = { sLines: "lines", sStars: "stars", sSkipT: "skipFirstT", sHideBank: "hideBankName" };
   function fillSettings() {
     Object.entries(SETTING_FIELDS).forEach(([id, k]) => { $(id).value = S[k] == null ? "" : S[k]; });
