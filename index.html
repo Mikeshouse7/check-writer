@@ -173,6 +173,7 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
         </form>
         <div class="btns">
           <button type="button" class="b primary" id="btnPrint">Print check</button>
+          <button type="button" class="b" id="btnPdf" hidden>Save as PDF</button>
           <button type="button" class="b" id="btnSave">Save to register</button>
           <button type="button" class="b" id="btnClear">Clear</button>
         </div>
@@ -776,6 +777,13 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
     return downloadsApi;
   }
   async function saveFile(name, data, msgId) {
+    if (!IN_FRAME) {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(data instanceof Blob ? data : new Blob([data]));
+      a.download = name; document.body.appendChild(a); a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 60000);
+      return true;
+    }
     const dl = await getDownloads();
     if (!dl) { flash(msgId, "Saving files isn't available in this view. Use the downloaded app instead.", "warn"); return false; }
     try { await dl.save({ filename: name, data }); return true; }
@@ -810,8 +818,12 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
   }
   function doPrint(html, name, msgId) {
     if (IN_FRAME) { makePdf(html, name, msgId); return "pdf"; }
+    // Left in place after printing: on phones "afterprint" fires before the
+    // print preview is drawn, and clearing it then printed a blank page.
     $("printRoot").innerHTML = html;
-    setTimeout(() => window.print(), 50);
+    const imgs = [...$("printRoot").querySelectorAll("img")];
+    Promise.all(imgs.map((im) => im.complete ? 0 : new Promise((r) => { im.onload = im.onerror = r; })))
+      .then(() => setTimeout(() => window.print(), 100));
     return true;
   }
   let editingId = null;
@@ -874,6 +886,17 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
     if (!e) return;
     const ok = doPrint(html, "check-" + e.num + ".pdf", "cMsg");
     if (ok === true) flash("cMsg", "Check #" + e.num + " sent to the printer and saved in the register.", "good");
+    startNextCheck(true);
+  });
+  if (!IN_FRAME) $("btnPdf").hidden = false;
+  $("btnPdf").addEventListener("click", () => {
+    const c = currentCheck();
+    const err = validateCheck(c);
+    if (err) { flash("cMsg", err, "bad"); return; }
+    const html = sheetHtml(c, S);
+    const e = record("printed");
+    if (!e) return;
+    makePdf(html, "check-" + e.num + ".pdf", "cMsg");
     startNextCheck(true);
   });
   $("btnSave").addEventListener("click", () => {
@@ -1149,7 +1172,6 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
     refresh();
   }
   document.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => go(b.dataset.go)));
-  window.addEventListener("afterprint", () => { $("printRoot").innerHTML = ""; });
 
   /* ---------------- boot ---------------- */
   renderAccounts();
