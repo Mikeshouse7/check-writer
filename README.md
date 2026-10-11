@@ -10,7 +10,7 @@ one register. Locking a device clears its local copy.
 
 Run locally: `node server.mjs` → http://localhost:5185 (data in `data/`).
 Online: Railway, Node 20+, a volume mounted for data, `APP_PASSCODE` set.
-Custom domain: checkwriter.theproductgenerator.com.
+Custom domain: check-writer.theproductgenerator.com.
 
 First time online: open the site, enter the code, then Register → Restore
 backup and pick your saved backup .json. It uploads and syncs from then on.
