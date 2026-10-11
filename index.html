@@ -877,6 +877,14 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
     if (!keepMsg) flash("cMsg", "", "");
     lists(); refresh(); renderRegister();
   }
+  // After printing, the check stays on screen (as a saved check) so it can be
+  // reprinted if the printer or phone drops it. Clear starts the next one.
+  function keepPrinted(e) {
+    state.draft = null; save();
+    setEditing(e.id);
+    $("sNext").value = S.next;
+    lists(); refresh(); renderRegister();
+  }
   $("btnPrint").addEventListener("click", () => {
     const c = currentCheck();
     const err = validateCheck(c);
@@ -885,8 +893,8 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
     const e = record("printed");
     if (!e) return;
     const ok = doPrint(html, "check-" + e.num + ".pdf", "cMsg");
-    if (ok === true) flash("cMsg", "Check #" + e.num + " sent to the printer and saved in the register.", "good");
-    startNextCheck(true);
+    if (ok === true) flash("cMsg", "Check #" + e.num + " sent to the printer and saved in the register. It stays here so you can reprint it. Click Clear for the next check.", "good");
+    keepPrinted(e);
   });
   if (!IN_FRAME) $("btnPdf").hidden = false;
   $("btnPdf").addEventListener("click", () => {
@@ -897,7 +905,7 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
     const e = record("printed");
     if (!e) return;
     makePdf(html, "check-" + e.num + ".pdf", "cMsg");
-    startNextCheck(true);
+    keepPrinted(e);
   });
   $("btnSave").addEventListener("click", () => {
     const wasEditing = !!editingId;
