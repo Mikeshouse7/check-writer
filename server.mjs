@@ -57,11 +57,21 @@ function writeState(next) {
 
 /* ---------------- the lock (required online) ---------------- */
 const FAILS = new Map();   // ip -> { n, first }
+const WINDOW = 15 * 60000;
+// Wrong codes from everyone together: guessing spread over many addresses
+// still runs out after this many tries per 15 minutes.
+const ALL_FAILS = { n: 0, first: 0 };
+const ALL_FAILS_MAX = 100;
 function codeOk(supplied) {
   const a = Buffer.from(String(supplied || "")), b = Buffer.from(PASSCODE);
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
-function clientIp(req) { return String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "").split(",")[0].trim(); }
+// Railway's proxy adds the visitor's real address as the LAST entry of
+// X-Forwarded-For; earlier entries come from the visitor and can be faked.
+function clientIp(req) {
+  const hops = String(req.headers["x-forwarded-for"] || "").split(",").map((s) => s.trim()).filter(Boolean);
+  return hops.length ? hops[hops.length - 1] : String(req.socket.remoteAddress || "");
+}
 
 /* ---------------- tiny HTTP server ---------------- */
 const SECURITY = {
@@ -93,12 +103,16 @@ const server = http.createServer(async (req, res) => {
     if (u.pathname.startsWith("/api/")) {
       if (ONLINE && !PASSCODE) return send(res, 503, { error: "Check Writer is locked shut: set APP_PASSCODE in Railway → Variables first." });
       if (PASSCODE) {
-        const ip = clientIp(req);
+        const ip = clientIp(req), now = Date.now();
         const f = FAILS.get(ip);
-        if (f && f.n >= 10 && Date.now() - f.first < 15 * 60000) return send(res, 429, { error: "Too many wrong codes. Wait 15 minutes and try again." });
+        if (f && f.n >= 10 && now - f.first < WINDOW) return send(res, 429, { error: "Too many wrong codes. Wait 15 minutes and try again." });
+        if (now - ALL_FAILS.first >= WINDOW) { ALL_FAILS.n = 0; ALL_FAILS.first = now; }
+        if (ALL_FAILS.n >= ALL_FAILS_MAX) return send(res, 429, { error: "Too many wrong codes from many places. Check Writer is locked for 15 minutes." });
         if (!codeOk(req.headers["x-app-code"])) {
-          const g = f && Date.now() - f.first < 15 * 60000 ? f : { n: 0, first: Date.now() };
-          g.n++; FAILS.set(ip, g);
+          const g = f && now - f.first < WINDOW ? f : { n: 0, first: now };
+          g.n++; FAILS.set(ip, g); ALL_FAILS.n++;
+          // forget addresses whose 15 minutes are over, so the list cannot grow without end
+          if (FAILS.size > 5000) for (const [k, v] of FAILS) if (now - v.first >= WINDOW) FAILS.delete(k);
           return send(res, 401, { error: "Wrong access code." });
         }
         FAILS.delete(ip);
