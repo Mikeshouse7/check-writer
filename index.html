@@ -742,8 +742,8 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
   $("btnNoBiz").addEventListener("click", () => { S.bizLogo = ""; $("sBizLogo").value = ""; save(); refresh(); });
   $("btnNoLogo").addEventListener("click", () => { S.logo = ""; $("sLogo").value = ""; save(); refresh(); });
   $("btnNoSig").addEventListener("click", () => { S.sig = ""; $("sSig").value = ""; save(); refresh(); });
-  // On screen the signature is covered by a black box the same size, so it
-  // can't be copied from the preview. Printing and PDFs use the real image.
+  // Once a check is saved, its signature is covered on screen by a black box
+  // the same size. Printing and PDFs still use the real image.
   function maskSignature(sheet) {
     sheet.querySelectorAll(".sigImg img").forEach((im) => {
       const cover = () => {
@@ -787,7 +787,7 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
     const box = $("scaleBox");
     box.innerHTML = sheetHtml(c, s);
     const sheet = box.firstChild;
-    maskSignature(sheet);
+    if (editingId) maskSignature(sheet);   // saved checks: signature covered on screen
     if (!$("pGuides").checked) sheet.querySelectorAll(".perf").forEach((p) => p.remove());
     const w = box.clientWidth || 600, scale = w / 816;
     sheet.style.transform = "scale(" + scale + ")";
