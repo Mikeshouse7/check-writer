@@ -597,7 +597,7 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
       // Sits on the signature line (bottom edge at 2.76in); size and nudges are per account.
       const k = Math.min(1.8, Math.max(0.5, +s.sigScale || 1)), dx = +s.sigDx || 0, dy = +s.sigDy || 0;
       const sh = 0.48 * k, sw = 2.5 * k;
-      h += '<div style="position:absolute;left:' + (5.6 + dx) + 'in;top:' + (2.76 - sh + dy) + 'in;width:' + sw + 'in;height:' + sh + 'in;display:flex;align-items:flex-end"><img src="' + s.sig + '" alt="" style="display:block;max-width:100%;max-height:100%;width:auto;height:auto;mix-blend-mode:multiply"></div>';
+      h += '<div style="position:absolute;left:' + (5.6 + dx) + 'in;top:' + (2.76 - sh + dy) + 'in;width:' + sw + 'in;height:' + sh + 'in;display:flex;align-items:flex-end" class="sigImg"><img src="' + s.sig + '" alt="" style="display:block;max-width:100%;max-height:100%;width:auto;height:auto;mix-blend-mode:multiply"></div>';
     }
     if (L) { h += HL(5.37, 2.74, 2.81); h += A(5.37, 2.79, "AUTHORIZED SIGNATURE", "font-size:5.5pt;letter-spacing:.06em"); }
     // MICR
@@ -742,6 +742,23 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
   $("btnNoBiz").addEventListener("click", () => { S.bizLogo = ""; $("sBizLogo").value = ""; save(); refresh(); });
   $("btnNoLogo").addEventListener("click", () => { S.logo = ""; $("sLogo").value = ""; save(); refresh(); });
   $("btnNoSig").addEventListener("click", () => { S.sig = ""; $("sSig").value = ""; save(); refresh(); });
+  // On screen the signature is covered by a black box the same size, so it
+  // can't be copied from the preview. Printing and PDFs use the real image.
+  function maskSignature(sheet) {
+    sheet.querySelectorAll(".sigImg img").forEach((im) => {
+      const cover = () => {
+        const box = im.parentElement, bw = box.offsetWidth, bh = box.offsetHeight;
+        const nw = im.naturalWidth || bw, nh = im.naturalHeight || bh;
+        const f = Math.min(bw / nw, bh / nh, 1);
+        const d = document.createElement("div");
+        d.style.cssText = "width:" + nw * f + "px;height:" + nh * f + "px;background:#111;display:flex;align-items:center;justify-content:center;color:#fff;font-size:7pt;letter-spacing:.08em";
+        d.textContent = "SIGNATURE ON FILE";
+        im.replaceWith(d);
+      };
+      im.style.visibility = "hidden";
+      if (im.complete) cover(); else im.onload = cover;
+    });
+  }
   function showSigControls() {
     $("cSignRow").hidden = !S.sig;
     $("sigSizeRow").hidden = !$("cSign").checked;
@@ -770,6 +787,7 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
     const box = $("scaleBox");
     box.innerHTML = sheetHtml(c, s);
     const sheet = box.firstChild;
+    maskSignature(sheet);
     if (!$("pGuides").checked) sheet.querySelectorAll(".perf").forEach((p) => p.remove());
     const w = box.clientWidth || 600, scale = w / 816;
     sheet.style.transform = "scale(" + scale + ")";
