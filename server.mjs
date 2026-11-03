@@ -99,7 +99,7 @@ const server = http.createServer(async (req, res) => {
     if (u.pathname === "/" || u.pathname === "/index.html") {
       return send(res, 200, fs.readFileSync(path.join(DIR, "index.html")), "text/html; charset=utf-8");
     }
-    if (u.pathname === "/api/ping") return send(res, 200, { app: "check-writer", locked: !!PASSCODE });
+    if (u.pathname === "/api/ping") return send(res, 200, { app: "check-writer", version: "1.6", locked: !!PASSCODE });
     if (u.pathname.startsWith("/api/")) {
       if (ONLINE && !PASSCODE) return send(res, 503, { error: "Check Writer is locked shut: set APP_PASSCODE in Railway → Variables first." });
       if (PASSCODE) {

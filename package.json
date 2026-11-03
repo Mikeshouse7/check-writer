@@ -1,6 +1,6 @@
 {
   "name": "check-writer",
-  "version": "1.0.0",
+  "version": "1.6.0",
   "private": true,
   "description": "Check Writer: write and print checks on VersaCheck/ValueChex check-on-top paper, synced between phone and PC",
   "type": "module",
