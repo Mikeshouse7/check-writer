@@ -110,6 +110,10 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
 .sheet .micr svg { display: block; }
 .sheet .notes { white-space: pre-wrap; line-height: 1.35; }
 #printRoot { display: none; }
+.sigBox { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; display: grid; gap: 6px; }
+.sigBox[hidden], .sigSize[hidden] { display: none; }
+.sigSize { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px 12px; align-items: end; }
+.sigSize input[type=range] { width: 100%; }
 .syncState { font-size: 12px; color: var(--muted); display: inline-flex; gap: 8px; align-items: baseline; }
 .syncState button { font: inherit; font-size: 12px; background: none; border: 0; padding: 0; color: var(--muted); text-decoration: underline; cursor: pointer; }
 .lock { position: fixed; inset: 0; z-index: 50; background: var(--bg, #f4f6f5); display: flex; align-items: center; justify-content: center; padding: 16px; }
@@ -167,6 +171,15 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
           <label class="f">Amount ($)<input id="cAmt" class="num" inputmode="decimal" placeholder="0.00"></label>
           <div class="words" id="cWords" aria-live="polite"></div>
           <label class="f">Memo (FOR line)<input id="cMemo" list="memoList" placeholder="Invoice, account number, purpose"></label>
+          <div class="sigBox" id="cSignRow" hidden>
+            <label class="chk"><input type="checkbox" id="cSign" checked> Print my signature on this check (untick to leave the line blank and sign by hand)</label>
+            <div class="sigSize" id="sigSizeRow">
+              <label class="f">Signature size <span id="sigScaleRo"></span><input type="range" id="sigScale" min="0.5" max="1.8" step="0.05"></label>
+              <label class="f">Left / right<input type="range" id="sigDx" min="-1.2" max="0.6" step="0.02"></label>
+              <label class="f">Up / down<input type="range" id="sigDy" min="-0.25" max="0.15" step="0.01"></label>
+              <button type="button" class="b" id="sigReset">Reset size</button>
+            </div>
+          </div>
           <label class="f">Payee address (optional, prints under payee for window envelopes)<textarea id="cPayeeAddr" rows="2" placeholder="Street&#10;City, ST ZIP"></textarea></label>
           <label class="f">Stub details (prints on both stubs)<textarea id="cNotes" rows="3" placeholder="Invoice # / description / breakdown"></textarea></label>
           <div class="msg" id="cMsg"></div>
@@ -355,8 +368,8 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
      accounts: one entry per bank account (who's on the check, bank numbers, next check #).
      global: printer and MICR settings shared by every account.
      register: every check, tagged with the account it was drawn on. */
-  const ACCOUNT_KEYS = ["bizLogo", "memos", "hideBankName", "label", "name", "addr", "bank", "bankCity", "routing", "account", "fraction", "next", "logo", "sig", "micrStyle"];
-  const ACCOUNT_DEFAULTS = { bizLogo: "", memos: "", hideBankName: false, label: "", name: "", addr: "", bank: "", bankCity: "", routing: "", account: "", fraction: "", next: 1001, logo: "", sig: "", micrStyle: "personal" };
+  const ACCOUNT_KEYS = ["bizLogo", "memos", "hideBankName", "label", "name", "addr", "bank", "bankCity", "routing", "account", "fraction", "next", "logo", "sig", "sigScale", "sigDx", "sigDy", "micrStyle"];
+  const ACCOUNT_DEFAULTS = { bizLogo: "", memos: "", hideBankName: false, label: "", name: "", addr: "", bank: "", bankCity: "", routing: "", account: "", fraction: "", next: 1001, logo: "", sig: "", sigScale: 1, sigDx: 0, sigDy: 0, micrStyle: "personal" };
   const GLOBAL_DEFAULTS = { micrFont: "builtin", micrFontName: "MICR E13B", micrSize: 12, micrKeys: "A,C", lines: true, stubs: true, stubCount: "1", stubStyle: "paidto", stars: false, skipFirstT: false, micrScale: "1", paper: "qb", offX: 0, offY: 0, micrX: -0.002, micrY: -0.002 };
   const EXAMPLE = { name: "Your Name", addr: "555-123-4567\n123 Main Street\nAnytown, ST 12345", bank: "Your Bank", bankCity: "", routing: "011000015", account: "000123456789", fraction: "" };
   const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -580,7 +593,12 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
     h += A(0.72, 2.55, esc(c.memo), "font-size:" + memoPt + "pt");
     if (L) h += HL(0.68, 2.74, 3.7);
     // signature
-    if (s.sig) h += '<img src="' + s.sig + '" alt="" style="position:absolute;left:5.6in;top:2.28in;max-width:2.5in;max-height:0.48in;mix-blend-mode:multiply">';
+    if (s.sig && c.sign !== false) {
+      // Sits on the signature line (bottom edge at 2.76in); size and nudges are per account.
+      const k = Math.min(1.8, Math.max(0.5, +s.sigScale || 1)), dx = +s.sigDx || 0, dy = +s.sigDy || 0;
+      const sh = 0.48 * k, sw = 2.5 * k;
+      h += '<div style="position:absolute;left:' + (5.6 + dx) + 'in;top:' + (2.76 - sh + dy) + 'in;width:' + sw + 'in;height:' + sh + 'in;display:flex;align-items:flex-end"><img src="' + s.sig + '" alt="" style="display:block;max-width:100%;max-height:100%;width:auto;height:auto;mix-blend-mode:multiply"></div>';
+    }
     if (L) { h += HL(5.37, 2.74, 2.81); h += A(5.37, 2.79, "AUTHORIZED SIGNATURE", "font-size:5.5pt;letter-spacing:.06em"); }
     // MICR
     h += micrLine(s, c.num);
@@ -656,7 +674,8 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
       cents: parseAmount($("cAmt").value),
       memo: $("cMemo").value.trim(),
       payeeAddr: $("cPayeeAddr").value.trim(),
-      notes: $("cNotes").value.trim()
+      notes: $("cNotes").value.trim(),
+      sign: $("cSign").checked
     };
   }
   function effectiveSettings() {
@@ -723,6 +742,15 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
   $("btnNoBiz").addEventListener("click", () => { S.bizLogo = ""; $("sBizLogo").value = ""; save(); refresh(); });
   $("btnNoLogo").addEventListener("click", () => { S.logo = ""; $("sLogo").value = ""; save(); refresh(); });
   $("btnNoSig").addEventListener("click", () => { S.sig = ""; $("sSig").value = ""; save(); refresh(); });
+  function showSigControls() {
+    $("cSignRow").hidden = !S.sig;
+    $("sigSizeRow").hidden = !$("cSign").checked;
+    $("sigScale").value = +S.sigScale || 1; $("sigDx").value = +S.sigDx || 0; $("sigDy").value = +S.sigDy || 0;
+    $("sigScaleRo").textContent = Math.round((+S.sigScale || 1) * 100) + "%";
+  }
+  ["sigScale", "sigDx", "sigDy"].forEach((k) => $(k).addEventListener("input", () => { S[k] = parseFloat($(k).value) || (k === "sigScale" ? 1 : 0); save(); refresh(); }));
+  $("sigReset").addEventListener("click", () => { S.sigScale = 1; S.sigDx = 0; S.sigDy = 0; save(); refresh(); });
+  $("cSign").addEventListener("change", () => { state.draft = currentCheck(); state.draft.amtRaw = $("cAmt").value; save(); refresh(); });
 
   ["cNum", "cDate", "cPayee", "cAmt", "cMemo", "cPayeeAddr", "cNotes"].forEach((id) => {
     $(id).addEventListener("input", () => {
@@ -734,6 +762,7 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
 
   /* ---------------- preview ---------------- */
   function refresh() {
+    showSigControls();
     const c = currentCheck();
     $("cWords").textContent = c.cents ? amountWords(c.cents) + " dollars" : ($("cAmt").value ? "Enter an amount like 250 or 1250.75" : "Amount in words appears here");
     $("setupNotice").hidden = settingsReady();
@@ -971,7 +1000,7 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
     if (b.dataset.act === "open") {
       setEditing(r.id);
       $("cNum").value = r.num; $("cNum").dataset.touched = "1"; $("cDate").value = r.date; $("cPayee").value = r.payee;
-      $("cAmt").value = money(r.cents).replace(/,/g, ""); $("cMemo").value = r.memo || ""; $("cPayeeAddr").value = r.payeeAddr || ""; $("cNotes").value = r.notes || "";
+      $("cAmt").value = money(r.cents).replace(/,/g, ""); $("cMemo").value = r.memo || ""; $("cPayeeAddr").value = r.payeeAddr || ""; $("cNotes").value = r.notes || ""; $("cSign").checked = r.sign !== false;
       go("write"); refresh(); flash("cMsg", "", "");
     } else if (b.dataset.act === "void") {
       r.status = "void"; save(); renderRegister(); flash("regMsg", "Check #" + r.num + " marked void.", "good");
@@ -1053,7 +1082,7 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
   });
   $("btnCopyAcct").addEventListener("click", () => {
     const src = acct();
-    const a = newAccount({ label: acctName(src) + " (copy)", name: src.name, addr: src.addr, bank: src.bank, bankCity: src.bankCity, routing: src.routing, fraction: src.fraction, logo: src.logo, bizLogo: src.bizLogo, memos: src.memos, hideBankName: src.hideBankName, sig: src.sig, micrStyle: src.micrStyle });
+    const a = newAccount({ label: acctName(src) + " (copy)", name: src.name, addr: src.addr, bank: src.bank, bankCity: src.bankCity, routing: src.routing, fraction: src.fraction, logo: src.logo, bizLogo: src.bizLogo, memos: src.memos, hideBankName: src.hideBankName, sig: src.sig, sigScale: src.sigScale, sigDx: src.sigDx, sigDy: src.sigDy, micrStyle: src.micrStyle });
     state.accounts.push(a);
     switchTo(a.id, "Copied the name, address and bank. Enter the new account number and starting check number.");
     go("settings"); $("sAccount").focus();
@@ -1187,7 +1216,7 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
   $("cNum").value = d && d.num ? d.num : S.next;
   if (d && d.num) $("cNum").dataset.touched = "1";
   $("cDate").value = (d && d.date) || todayIso();
-  if (d) { $("cPayee").value = d.payee || ""; $("cAmt").value = d.amtRaw || ""; $("cMemo").value = d.memo || ""; $("cPayeeAddr").value = d.payeeAddr || ""; $("cNotes").value = d.notes || ""; }
+  if (d) { $("cPayee").value = d.payee || ""; $("cAmt").value = d.amtRaw || ""; $("cMemo").value = d.memo || ""; $("cPayeeAddr").value = d.payeeAddr || ""; $("cNotes").value = d.notes || ""; $("cSign").checked = d.sign !== false; }
   else if (!state.register.length) { $("cPayee").value = "Example Payee"; $("cAmt").value = "250.00"; $("cMemo").value = "Example memo"; }
   if (IN_FRAME) {
     $("printHint").textContent = "Here, Print check saves a PDF. Open it and print at 100% (Actual size) on Letter paper.";
