@@ -236,7 +236,7 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
           </div>
           <div class="row2">
             <label class="f">Bank logo (PNG or JPG; prints under the amount line)<input id="sLogo" type="file" accept="image/*"></label>
-            <label class="f">Signature (photo or scan of your signature; prints on the signature line)<input id="sSig" type="file" accept="image/*"></label>
+            <label class="f">Signature (photo or scan; used on every account's checks)<input id="sSig" type="file" accept="image/*"></label>
           </div>
           <label class="f">Business logo (optional, prints at the top left)<input id="sBizLogo" type="file" accept="image/*"></label>
           <label class="f">Saved memos (one per line; they show as choices on the FOR line)<textarea id="sMemos" rows="2" placeholder="Tithes &amp; Offering #6961"></textarea></label>
@@ -368,9 +368,9 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
      accounts: one entry per bank account (who's on the check, bank numbers, next check #).
      global: printer and MICR settings shared by every account.
      register: every check, tagged with the account it was drawn on. */
-  const ACCOUNT_KEYS = ["bizLogo", "memos", "hideBankName", "label", "name", "addr", "bank", "bankCity", "routing", "account", "fraction", "next", "logo", "sig", "sigScale", "sigDx", "sigDy", "micrStyle"];
-  const ACCOUNT_DEFAULTS = { bizLogo: "", memos: "", hideBankName: false, label: "", name: "", addr: "", bank: "", bankCity: "", routing: "", account: "", fraction: "", next: 1001, logo: "", sig: "", sigScale: 1, sigDx: 0, sigDy: 0, micrStyle: "personal" };
-  const GLOBAL_DEFAULTS = { micrFont: "builtin", micrFontName: "MICR E13B", micrSize: 12, micrKeys: "A,C", lines: true, stubs: true, stubCount: "1", stubStyle: "paidto", stars: false, skipFirstT: false, micrScale: "1", paper: "qb", offX: 0, offY: 0, micrX: -0.002, micrY: -0.002 };
+  const ACCOUNT_KEYS = ["bizLogo", "memos", "hideBankName", "label", "name", "addr", "bank", "bankCity", "routing", "account", "fraction", "next", "logo", "micrStyle"];
+  const ACCOUNT_DEFAULTS = { bizLogo: "", memos: "", hideBankName: false, label: "", name: "", addr: "", bank: "", bankCity: "", routing: "", account: "", fraction: "", next: 1001, logo: "", micrStyle: "personal" };
+  const GLOBAL_DEFAULTS = { micrFont: "builtin", micrFontName: "MICR E13B", micrSize: 12, micrKeys: "A,C", lines: true, stubs: true, stubCount: "1", stubStyle: "paidto", stars: false, skipFirstT: false, micrScale: "1", paper: "qb", offX: 0, offY: 0, micrX: -0.002, micrY: -0.002, sig: "", sigScale: 1, sigDx: 0, sigDy: 0 };
   const EXAMPLE = { name: "Your Name", addr: "555-123-4567\n123 Main Street\nAnytown, ST 12345", bank: "Your Bank", bankCity: "", routing: "011000015", account: "000123456789", fraction: "" };
   const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   function newAccount(extra) { return Object.assign({ id: newId() }, ACCOUNT_DEFAULTS, extra || {}); }
@@ -387,6 +387,12 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
       global.micrY = (+global.micrY || 0) - 0.002;
     }
     global.alignV2 = true;
+    // One signature for every account (it used to be stored per account).
+    if (!global.sig) {
+      const withSig = accounts.find((a) => a.sig);
+      if (withSig) ["sig", "sigScale", "sigDx", "sigDy"].forEach((k) => { if (withSig[k] != null) global[k] = withSig[k]; });
+    }
+    accounts.forEach((a) => { delete a.sig; delete a.sigScale; delete a.sigDx; delete a.sigDy; });
     let register = Array.isArray(d.register) ? d.register : [];
     if (!accounts.length) {
       // version 1 kept a single account inside "settings"
@@ -1100,7 +1106,7 @@ table.reg td.amt, table.reg th.amt { text-align: right; }
   });
   $("btnCopyAcct").addEventListener("click", () => {
     const src = acct();
-    const a = newAccount({ label: acctName(src) + " (copy)", name: src.name, addr: src.addr, bank: src.bank, bankCity: src.bankCity, routing: src.routing, fraction: src.fraction, logo: src.logo, bizLogo: src.bizLogo, memos: src.memos, hideBankName: src.hideBankName, sig: src.sig, sigScale: src.sigScale, sigDx: src.sigDx, sigDy: src.sigDy, micrStyle: src.micrStyle });
+    const a = newAccount({ label: acctName(src) + " (copy)", name: src.name, addr: src.addr, bank: src.bank, bankCity: src.bankCity, routing: src.routing, fraction: src.fraction, logo: src.logo, bizLogo: src.bizLogo, memos: src.memos, hideBankName: src.hideBankName, micrStyle: src.micrStyle });
     state.accounts.push(a);
     switchTo(a.id, "Copied the name, address and bank. Enter the new account number and starting check number.");
     go("settings"); $("sAccount").focus();
